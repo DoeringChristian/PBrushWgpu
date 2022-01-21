@@ -11,6 +11,8 @@ pub struct Texture{
     pub view: wgpu::TextureView,
     pub sampler: wgpu::Sampler,
     pub format: wgpu::TextureFormat,
+    pub bind_group_layout: wgpu::BindGroupLayout,
+    pub bind_group: wgpu::BindGroup,
 }
 
 impl Texture{
@@ -74,11 +76,31 @@ impl Texture{
             }
         );
 
+        let bind_group_layout = Self::create_bind_group_layout(device, Some("Texture BindGroupLayout"))?;
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
+            label,
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry{
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry{
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                }
+            ],
+        });
+
+
         Ok(Self{
             texture,
             view,
             sampler,
             format,
+            bind_group,
+            bind_group_layout,
         })
     }
 
@@ -89,18 +111,18 @@ impl Texture{
         label: Option<&str>,
         format: wgpu::TextureFormat
     ) -> Result<Self>{
-        let img_data: &[u8] = match format{
-            wgpu::TextureFormat::Rgba8Unorm => img.as_rgba8().unwrap(),
-            wgpu::TextureFormat::Rgba8UnormSrgb => img.as_rgba8().unwrap(),
-            wgpu::TextureFormat::Bgra8Unorm => img.as_bgra8().unwrap(),
-            wgpu::TextureFormat::Bgra8UnormSrgb => img.as_bgra8().unwrap(),
-
+        let img_data: Vec<u8> = match format{
+            wgpu::TextureFormat::Rgba8Unorm     => img.to_rgba8().into_raw(),
+            wgpu::TextureFormat::Rgba8UnormSrgb => img.to_rgba8().into_raw(),
+            wgpu::TextureFormat::Bgra8Unorm     => img.to_bgra8().into_raw(),
+            wgpu::TextureFormat::Bgra8UnormSrgb => img.to_bgra8().into_raw(),
             _ => {
                 return Err(anyhow!("Format not supported"));
             }
         };
+
         let dims = img.dimensions();
-        
+
         let size = wgpu::Extent3d{
             width: dims.0,
             height: dims.1,
@@ -128,7 +150,7 @@ impl Texture{
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
-            img_data,
+            &img_data,
             wgpu::ImageDataLayout{
                 offset: 0,
                 bytes_per_row: std::num::NonZeroU32::new(4 * dims.0),
@@ -154,11 +176,30 @@ impl Texture{
             }
         );
 
+        let bind_group_layout = Self::create_bind_group_layout(device, Some("Texture BindGroupLayout"))?;
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
+            label,
+            layout: &bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry{
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry{
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                }
+            ],
+        });
+
         Ok(Self{
             texture,
             view,
             sampler,
             format,
+            bind_group,
+            bind_group_layout,
         })
     }
 
@@ -223,4 +264,16 @@ impl BindGroup for Texture{
             ],
         }))
     }
+}
+
+pub fn image_formated(img: image::DynamicImage, format: &wgpu::TextureFormat) -> Result<image::DynamicImage>{
+    match img{
+        image::DynamicImage::ImageRgb8(img) => {
+            match format{
+                _ => {Err(anyhow!("Texture Format not known"))}
+            }
+        }
+        _ => {Err(anyhow!("Image format not known"))}
+    }
+
 }
