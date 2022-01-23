@@ -7,6 +7,7 @@ use std::fs;
 use std::fs::File;
 use std::io::Read;
 
+
 ///
 /// 
 ///
@@ -227,7 +228,7 @@ impl RenderTarget for Texture{
     }
 }
 
-impl BindGroupLayout for Texture{
+impl ToBindGroupLayout for Texture{
     fn create_bind_group_layout(device: &wgpu::Device, label: Option<&str>) -> BindGroupLayoutWithDesc{
         BindGroupLayoutBuilder::new()
             .push_entry_all(binding::wgsl::texture_2d())
@@ -236,7 +237,7 @@ impl BindGroupLayout for Texture{
     }
 }
 
-impl BindGroup for Texture{
+impl ToBindGroup for Texture{
     fn create_bind_group(&self, device: &wgpu::Device, layout: &BindGroupLayoutWithDesc, label: Option<&str>) -> wgpu::BindGroup {
         BindGroupBuilder::new(layout)
             .texture(&self.view)

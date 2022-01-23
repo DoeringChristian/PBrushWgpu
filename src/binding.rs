@@ -1,12 +1,18 @@
 #[allow(unused)]
 use anyhow::*;
+use std::marker::PhantomData;
 
-pub trait BindGroupLayout{
+pub trait ToBindGroupLayout{
     fn create_bind_group_layout(device: &wgpu::Device, label: Option<&str>) -> BindGroupLayoutWithDesc;
 }
 
-pub trait BindGroup: BindGroupLayout{
+pub trait ToBindGroup: ToBindGroupLayout{
     fn create_bind_group(&self, device: &wgpu::Device, layout: &BindGroupLayoutWithDesc, label: Option<&str>) -> wgpu::BindGroup;
+}
+
+pub struct BindGroupLayout<T: ToBindGroupLayout>{
+    _ty: PhantomData<T>,
+    layout: wgpu::BindGroupLayout,
 }
 
 pub struct BindGroupLayoutWithDesc{

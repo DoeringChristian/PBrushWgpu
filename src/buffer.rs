@@ -2,6 +2,8 @@ use anyhow::*;
 use wgpu::util::DeviceExt;
 use std::marker::PhantomData;
 
+use crate::binding;
+
 pub trait ToBuffer{
     fn create_buffer(&self, device: &wgpu::Device, usage: wgpu::BufferUsages) -> Result<wgpu::Buffer>;
 }
@@ -15,21 +17,24 @@ pub trait ToIdxBuffer: ToBuffer{
 }
 
 pub trait ToUniformBuffer{
-    fn uniform_label() -> &'static str;
+    //fn uniform_label() -> &'static str;
     fn create_uniform_buffer(&self, device: &wgpu::Device) -> Result<wgpu::Buffer>;
     fn update_uniform_buffer(&self, queue: &wgpu::Queue, dst: &mut wgpu::Buffer);
 }
 
 
 impl<T: bytemuck::Pod> ToUniformBuffer for T{
+    /*
     fn uniform_label() -> &'static str{
         let type_name = std::any::type_name::<Self>();
         let pos = type_name.rfind(':').unwrap();
         &type_name[(pos + 1)..]
     }
+    */
     fn create_uniform_buffer(&self, device: &wgpu::Device) -> Result<wgpu::Buffer> {
+
         let buffer = device.create_buffer(&wgpu::BufferDescriptor{
-            label: Some(&format!("UniformBuffer: {}", Self::uniform_label())),
+            label: Some("Uniform Buffer"),
             size: std::mem::size_of::<Self>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: true,
@@ -73,6 +78,8 @@ pub struct UniformBuffer<C>{
     content_type: PhantomData<C>,
 
     content: Vec<u8>,
+    pub binding_group_layout: binding::BindGroupLayoutWithDesc,
+    pub binding_group: wgpu::BindGroup,
 }
 
 impl<C: bytemuck::Pod> UniformBuffer<C>{
@@ -89,10 +96,21 @@ impl<C: bytemuck::Pod> UniformBuffer<C>{
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             mapped_at_creation: false,
         });
+
+        let binding_group_layout = binding::BindGroupLayoutBuilder::new()
+            .push_entry_all(binding::wgsl::uniform())
+            .create(device, None);
+
+        let binding_group = binding::BindGroupBuilder::new(&binding_group_layout)
+            .resource(buffer.as_entire_binding())
+            .create(device, None);
+
         UniformBuffer{
             buffer,
             content_type: PhantomData,
             content: Vec::new(),
+            binding_group_layout,
+            binding_group,
         }
     }
 
@@ -109,10 +127,20 @@ impl<C: bytemuck::Pod> UniformBuffer<C>{
 
         buffer.unmap();
 
+        let binding_group_layout = binding::BindGroupLayoutBuilder::new()
+            .push_entry_all(binding::wgsl::uniform())
+            .create(device, None);
+
+        let binding_group = binding::BindGroupBuilder::new(&binding_group_layout)
+            .resource(buffer.as_entire_binding())
+            .create(device, None);
+
         Self{
             buffer,
             content_type: PhantomData,
             content: bytemuck::bytes_of(src).to_vec(),
+            binding_group_layout,
+            binding_group,
         }
     }
 

@@ -5,7 +5,7 @@ use crate::mesh::Drawable;
 use crate::vert;
 use crate::program;
 use crate::render_target::RenderTarget;
-use crate::binding::BindGroupLayout;
+use crate::binding::ToBindGroupLayout;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -39,14 +39,14 @@ impl BlendOp{
         })
     }
 
-    pub fn draw(&self, encoder: &mut wgpu::CommandEncoder, dst: &wgpu::TextureView, src0: &wgpu::BindGroup, src1: &wgpu::BindGroup) -> Result<()>{
+    pub fn draw(&self, encoder: &mut wgpu::CommandEncoder, queue: &wgpu::Queue, dst: &wgpu::TextureView, src0: &wgpu::BindGroup, src1: &wgpu::BindGroup) -> Result<()>{
         let mut render_pass = dst.render_pass_clear(encoder, None)?;
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, src0, &[]);
         render_pass.set_bind_group(1, src1, &[]);
 
-        self.drawable.draw(&mut render_pass);
+        self.drawable.draw(queue, &mut render_pass);
 
         Ok(())
     }

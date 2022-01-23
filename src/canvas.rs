@@ -48,15 +48,16 @@ impl Canvas {
         self.layers.remove(index);
     }
 
-    pub fn draw(&self, encoder: &mut wgpu::CommandEncoder, dst: &wgpu::TextureView) -> Result<()> {
+    pub fn draw(&self, encoder: &mut wgpu::CommandEncoder, queue: &wgpu::Queue, dst: &wgpu::TextureView, dst_size: [u32; 2]) -> Result<()> {
         for (i, layer) in self.layers.iter().enumerate() {
-            layer.borrow().draw(encoder, &self.tex_tmp0.view)?;
+            layer.borrow().draw(encoder, queue, &self.tex_tmp0.view, dst_size)?;
             let blendop = layer.borrow().blendop();
 
             if i == self.layers.len() - 1 {
                 if i % 2 == 0 {
                     blendop.draw(
                         encoder,
+                        queue,
                         dst,
                         &self.tex_tmp0.bind_group,
                         &self.tex_tmp2.bind_group,
@@ -64,6 +65,7 @@ impl Canvas {
                 } else {
                     blendop.draw(
                         encoder,
+                        queue,
                         dst,
                         &self.tex_tmp0.bind_group,
                         &self.tex_tmp1.bind_group,
@@ -73,6 +75,7 @@ impl Canvas {
                 if i % 2 == 0 {
                     blendop.draw(
                         encoder,
+                        queue,
                         &self.tex_tmp1.view,
                         &self.tex_tmp0.bind_group,
                         &self.tex_tmp2.bind_group,
@@ -80,6 +83,7 @@ impl Canvas {
                 } else {
                     blendop.draw(
                         encoder,
+                        queue,
                         &self.tex_tmp2.view,
                         &self.tex_tmp0.bind_group,
                         &self.tex_tmp1.bind_group,
