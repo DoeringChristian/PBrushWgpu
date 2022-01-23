@@ -48,7 +48,7 @@ impl State for WinState{
 
         let blendops = Arc::new(blendop::BlendOpManager::new(&fstate.device, &fstate.queue, &fstate.config.format).unwrap());
 
-        let mut canvas = canvas::Canvas::new(&fstate.device, &fstate.queue, fstate.config.format, blendops.clone(), [100, 100]).unwrap();
+        let mut canvas = canvas::Canvas::new(&fstate.device, &fstate.queue, fstate.config.format, blendops.clone(), [1000, 1000]).unwrap();
 
         canvas.push_layer(layer::Layer::load(
                 &fstate.device,
@@ -90,7 +90,9 @@ impl State for WinState{
 
     fn input(&mut self, event: &WindowEvent) -> bool{false}
 
-    fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>){}
+    fn resize(&mut self, fstate: &mut FrameworkState, new_size: winit::dpi::PhysicalSize<u32>){
+        self.canvas.resize(&fstate.device, &fstate.queue, [new_size.width, new_size.height]).unwrap();
+    }
 }
 
 fn main() {

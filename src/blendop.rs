@@ -46,7 +46,7 @@ impl BlendOp{
         render_pass.set_bind_group(0, src0, &[]);
         render_pass.set_bind_group(1, src1, &[]);
 
-        self.drawable.draw(queue, &mut render_pass);
+        self.drawable.draw(&mut render_pass);
 
         Ok(())
     }

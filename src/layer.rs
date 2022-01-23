@@ -3,6 +3,7 @@ use crate::program;
 use crate::render_target::RenderTarget;
 use crate::texture;
 use crate::vert::Vert;
+use crate::buffer;
 use crate::blendop::BlendOp;
 use crate::vert::Vert2;
 use anyhow::*;
@@ -21,9 +22,10 @@ pub struct Layer{
     texture: texture::Texture,
     render_pipeline: wgpu::RenderPipeline,
 
-    translation: cgmath::Vector3<f32>,
-    scale: cgmath::Vector3<f32>,
-    rotation: cgmath::Vector4<f32>,
+    translation: glm::Vec3,
+    scale: glm::Vec3,
+    rotation: glm::Vec4,
+    uniform_buffer: buffer::UniformBuffer<ModelTransforms>,
 
     blendop: Arc<BlendOp>,
 }
@@ -39,24 +41,35 @@ impl Layer{
             *format,
         )?;
 
-        let drawable = Box::new(Model::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?);
+        let drawable = Box::new(Mesh::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?);
+
+        let model = glm::Mat4::identity();
+        let view = glm::Mat4::identity();
+        let proj = glm::Mat4::identity();
+        let model_transforms = ModelTransforms{
+            model: model.into(),
+            view: view.into(),
+            proj: proj.into()
+        };
+        let uniform_buffer = buffer::UniformBuffer::new_with_data(device, &model_transforms);
 
         let render_pipeline = program::new(
             &device,
             include_str!("shaders/forward_model.wgsl"),
             *format,
-            &[&texture.bind_group_layout.layout, &drawable.uniform_buffer.binding_group_layout.layout],
+            &[&texture.bind_group_layout.layout, &uniform_buffer.binding_group_layout.layout],
             &[drawable.vert_buffer_layout()]
         )?;
 
-        let translation = cgmath::Vector3::new(0.0, 0.0, 0.0);
-        let scale = cgmath::Vector3::new(1.0, 1.0, 1.0);
-        let rotation = cgmath::Vector4::new(0.0, 0.0, 1.0, 0.0);
+        let translation = glm::vec3(0.0, 0.0, 0.0);
+        let scale = glm::vec3(1.0, 1.0, 1.0);
+        let rotation = glm::vec4(0.0, 0.0, 1.0, 0.0);
 
         Ok(Self{
             texture,
             render_pipeline,
             drawable,
+            uniform_buffer,
             blendop,
             translation,
             scale,
@@ -75,22 +88,33 @@ impl Layer{
 
         let drawable = Box::new(Mesh::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?);
 
+        let model = glm::Mat4::identity();
+        let view = glm::Mat4::identity();
+        let proj = glm::Mat4::identity();
+        let model_transforms = ModelTransforms{
+            model: model.into(),
+            view: view.into(),
+            proj: proj.into()
+        };
+        let uniform_buffer = buffer::UniformBuffer::new_with_data(device, &model_transforms);
+
         let render_pipeline = program::new(
             &device,
             include_str!("shaders/forward_model.wgsl"),
             *format,
-            &[&texture.bind_group_layout.layout, &drawable.uniform_buffer.binding_group_layout.layout],
+            &[&texture.bind_group_layout.layout, &uniform_buffer.binding_group_layout.layout],
             &[drawable.vert_buffer_layout()]
         )?;
 
-        let translation = cgmath::Vector3::new(0.0, 0.0, 0.0);
-        let scale = cgmath::Vector3::new(1.0, 1.0, 1.0);
-        let rotation = cgmath::Vector4::new(0.0, 0.0, 1.0, 0.0);
+        let translation = glm::vec3(0.0, 0.0, 0.0);
+        let scale = glm::vec3(1000.0, 1000.0, 1000.0);
+        let rotation = glm::vec4(0.0, 0.0, 1.0, 0.0);
 
         Ok(Self{
             texture,
             render_pipeline,
             drawable,
+            uniform_buffer,
             blendop,
             translation,
             scale,
@@ -98,24 +122,36 @@ impl Layer{
         })
     }
 
-    pub fn draw(&self, encoder: &mut wgpu::CommandEncoder, queue: &wgpu::Queue, dst: &wgpu::TextureView, dst_size: [u32; 2]) -> Result<()>{
+    pub fn draw(&mut self, encoder: &mut wgpu::CommandEncoder, queue: &wgpu::Queue, dst: &wgpu::TextureView, dst_size: [u32; 2]) -> Result<()>{
         //self.blendop.draw(encoder, dst, &self.texture.bind_group, &itex.bind_group)?;
 
-        let rot = cgmath::Matrix4::from_axis_angle(cgmath::Vector3::new(self.rotation.x, self.rotation.y, self.rotation.z), self.rotation.w.into());
-        let scale = cgmath::Matrix4::from_nonuniform_scale(self.scale.x, self.scale.y, self.scale.z);
-        let translation = cgmath::Matrix4::from_translation(self.translation);
+        let axisv = glm::vec3(self.rotation.x, self.rotation.y, self.rotation.z);
+        let axis: nalgebra::Unit<glm::Vec3> = nalgebra::Unit::new_normalize(axisv);
+        let rot = glm::Mat4::from_axis_angle(&axis, self.rotation[3]);
+        let scale = glm::Mat4::new_nonuniform_scaling(&self.scale);
+        let translation = glm::Mat4::new_translation(&self.translation);
 
-        let dst_size_f32 = [dst_size[0] as f32, dst_size[1] as f32];
-        let proj: [[f32; 4]; 4] = glm::ortho(-dst_size_f32[0]/2.0, dst_size_f32[0]/2.0, dst_size_f32[1]/2.0, -dst_size_f32[1]/2.0, -1.0, 1.0).into();
+        let size_vec = glm::vec2(dst_size[0] as f32, dst_size[1] as f32);
+        let size_vec_norm = size_vec.normalize();
+        let proj: [[f32; 4]; 4] = glm::ortho(-size_vec_norm[0]/2.0, size_vec_norm[0]/2.0, size_vec_norm[1]/2.0, -size_vec_norm[1]/2.0, -1.0, 1.0).into();
+        let view: [[f32; 4]; 4] = glm::Mat4::identity().into();
         
-        self.drawable.model_transforms.model = (translation * scale * rot).into();
+        let model = ((translation * scale) * rot).into();
+        let model_transforms = ModelTransforms{
+            model,
+            view,
+            proj,
+        };
+
+        self.uniform_buffer.update(queue, &model_transforms);
 
         let mut render_pass = dst.render_pass_clear(encoder, None)?;
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.texture.bind_group, &[]);
+        render_pass.set_bind_group(1, &self.uniform_buffer.binding_group, &[]);
 
-        self.drawable.draw(queue, &mut render_pass);
+        self.drawable.draw(&mut render_pass);
 
         Ok(())
     }

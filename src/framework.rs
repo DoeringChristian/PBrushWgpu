@@ -15,7 +15,7 @@ pub trait State{
     fn new(fstate: &mut FrameworkState) -> Self;
     fn render(&mut self, fstate: &mut FrameworkState, control_flow: &mut ControlFlow) -> Result<(), wgpu::SurfaceError>{Ok(())}
     fn input(&mut self, event: &WindowEvent) -> bool{false}
-    fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>){}
+    fn resize(&mut self, fstate: &mut FrameworkState, new_size: winit::dpi::PhysicalSize<u32>){}
 }
 
 pub struct FrameworkState{
@@ -113,12 +113,12 @@ impl<S: 'static +  State> Framework<S>{
                         WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
                         WindowEvent::Resized(physical_size) => {
                             self.fstate.resize(*physical_size);
-                            self.state.resize(*physical_size);
+                            self.state.resize(&mut self.fstate, *physical_size);
                         },
 
                         WindowEvent::ScaleFactorChanged{new_inner_size, ..} => {
                             self.fstate.resize(**new_inner_size);
-                            self.state.resize(**new_inner_size);
+                            self.state.resize(&mut self.fstate, **new_inner_size);
                         },
                         _ => {},
                     }

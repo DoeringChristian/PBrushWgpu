@@ -48,9 +48,9 @@ impl Canvas {
         self.layers.remove(index);
     }
 
-    pub fn draw(&self, encoder: &mut wgpu::CommandEncoder, queue: &wgpu::Queue, dst: &wgpu::TextureView, dst_size: [u32; 2]) -> Result<()> {
+    pub fn draw(&mut self, encoder: &mut wgpu::CommandEncoder, queue: &wgpu::Queue, dst: &wgpu::TextureView, dst_size: [u32; 2]) -> Result<()> {
         for (i, layer) in self.layers.iter().enumerate() {
-            layer.borrow().draw(encoder, queue, &self.tex_tmp0.view, dst_size)?;
+            layer.borrow_mut().draw(encoder, queue, &self.tex_tmp0.view, dst_size)?;
             let blendop = layer.borrow().blendop();
 
             if i == self.layers.len() - 1 {
@@ -92,6 +92,13 @@ impl Canvas {
             }
         }
 
+        Ok(())
+    }
+
+    pub fn resize(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, size: [u32; 2]) -> Result<()>{
+        self.tex_tmp0 = texture::Texture::new_black(size, device, queue, None, self.tex_tmp0.format)?;
+        self.tex_tmp1 = texture::Texture::new_black(size, device, queue, None, self.tex_tmp1.format)?;
+        self.tex_tmp2 = texture::Texture::new_black(size, device, queue, None, self.tex_tmp2.format)?;
         Ok(())
     }
 }
