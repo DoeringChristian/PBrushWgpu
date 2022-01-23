@@ -1,12 +1,12 @@
 use bytemuck::*;
-use crate::bufferable::*;
+use crate::buffer::*;
 use wgpu::util::DeviceExt;
 
 pub trait Vert: bytemuck::Pod 
 + bytemuck::Zeroable 
 + Copy + Clone
 {
-    fn desc() -> wgpu::VertexBufferLayout<'static>;
+    fn buffer_layout() -> wgpu::VertexBufferLayout<'static>;
 }
 
 #[repr(C)]
@@ -31,7 +31,7 @@ impl Vert2{
 }
 
 impl Vert for Vert2{
-    fn desc() -> wgpu::VertexBufferLayout<'static> {
+    fn buffer_layout() -> wgpu::VertexBufferLayout<'static> {
         const ATTRIBS: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![
             0 => Float32x2,
             1 => Float32x2
@@ -44,7 +44,7 @@ impl Vert for Vert2{
     }
 }
 
-impl<V: Vert> Bufferable for &[V]{
+impl<V: Vert> ToBuffer for &[V]{
     fn create_buffer(&self, device: &wgpu::Device, usage: wgpu::BufferUsages) -> anyhow::Result<wgpu::Buffer> {
         let buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor{
@@ -58,7 +58,7 @@ impl<V: Vert> Bufferable for &[V]{
     }
 }
 
-impl<V: Vert> VertBufferable for &[V]{
+impl<V: Vert> ToVertBuffer for &[V]{
     fn create_vert_buffer(&self, device: &wgpu::Device) -> anyhow::Result<wgpu::Buffer>{
         self.create_buffer(device, wgpu::BufferUsages::VERTEX)
     }

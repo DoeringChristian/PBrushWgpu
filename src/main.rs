@@ -10,37 +10,55 @@ use winit::{
     window::WindowBuilder,
 };
 
+use std::sync::Arc;
+
+#[macro_use]
+extern crate more_asserts;
+
 mod framework;
 mod vert;
 mod mesh;
 mod texture;
 mod render_target;
-mod bindable;
-mod bufferable;
+mod binding;
+mod buffer;
 mod uniform;
 mod program;
+mod layer;
+mod pipeline;
+mod blendop;
+mod canvas;
 
 use framework::*;
-use bindable::*;
+use binding::*;
 use vert::*;
 use mesh::*;
 
 struct WinState{
     texture: texture::Texture,
     texture_tmp: texture::Texture,
+    layer: layer::Layer,
 
     render_pipeline: wgpu::RenderPipeline,
 
-    mesh: Mesh,
+    blendops: blendop::BlendOpManager,
+
+    canvas: canvas::Canvas,
+
+    mesh: Mesh<Vert2>,
 }
 
 impl State for WinState{
     fn new(fstate: &mut FrameworkState) -> Self {
 
-        let texture = texture::Texture::from_bytes(
+        let blendops = Arc::new(blendop::BlendOpManager::new(&fstate.device, &fstate.queue, &fstate.config.format).unwrap());
+
+        let canvas = canvas::Canvas::new(&fstate.device, &fstate.queue, fstate.config.format, blendops.clone(), [100, 100]).unwrap();
+
+        let texture = texture::Texture::load_from_path(
             &fstate.device,
             &fstate.queue,
-            include_bytes!("imgs/tree.png"),
+            "assets/test1.jpg",
             Some("texture"),
             fstate.config.format,
         ).unwrap();
@@ -53,21 +71,31 @@ impl State for WinState{
             fstate.config.format,
         ).unwrap();
 
-        let render_pipeline = program::Program::new(
+        let render_pipeline = program::new(
             &fstate.device, 
             include_str!("shaders/forward.wgsl"), 
             fstate.config.format, 
-            &[&texture.bind_group_layout], 
-            &[Vert2::desc()]
-        ).unwrap().render_pipeline;
+            &[&texture.bind_group_layout.layout], 
+            &[Vert2::buffer_layout()]
+        ).unwrap();
 
         let mesh = Mesh::new(&fstate.device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS).unwrap();
+        
+        let layer = layer::Layer::new(
+            &fstate.device,
+            &fstate.queue,
+            &fstate.config.format,
+            (100, 100),
+            blendops.arc_to("Add").unwrap()
+        ).unwrap();
 
         Self{
             render_pipeline,
             mesh,
             texture,
             texture_tmp,
+            layer,
+            blendops,
         }
     }
     fn render(&mut self, fstate: &mut FrameworkState, control_flow: &mut ControlFlow) -> Result<(), wgpu::SurfaceError> {
@@ -79,13 +107,16 @@ impl State for WinState{
         });
 
         {
-            let mut render_pass = self.texture_tmp.view.render_pass(&mut encoder, None).unwrap();
+            let mut render_pass = self.texture_tmp.view.render_pass_load(&mut encoder, None).unwrap();
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_bind_group(0, &self.texture.bind_group, &[]);
             self.mesh.draw(&mut render_pass);
         }
 
+        self.layer.draw(&mut encoder, &view).unwrap();
+
+        /*
         {
             let mut render_pass = view.render_pass(&mut encoder, None).unwrap();
 
@@ -93,6 +124,8 @@ impl State for WinState{
             render_pass.set_bind_group(0, &self.texture_tmp.bind_group, &[]);
             self.mesh.draw(&mut render_pass);
         }
+        */
+        
 
         fstate.queue.submit(std::iter::once(encoder.finish()));
         output.present();
