@@ -31,6 +31,7 @@ mod pipeline;
 mod blendop;
 mod canvas;
 mod algebra;
+mod brush;
 
 use framework::*;
 use binding::*;
@@ -40,6 +41,8 @@ use mesh::*;
 struct WinState{
     blendops: Arc<blendop::BlendOpManager>,
 
+    brushops: Arc<brush::BrushOpManager>,
+
     canvas: canvas::Canvas,
 }
 
@@ -47,6 +50,7 @@ impl State for WinState{
     fn new(fstate: &mut FrameworkState) -> Self {
 
         let blendops = Arc::new(blendop::BlendOpManager::new(&fstate.device, &fstate.queue, &fstate.config.format).unwrap());
+        let brushops = Arc::new(brush::BrushOpManager::new(&fstate.device, &fstate.queue, fstate.config.format).unwrap());
 
         let mut canvas = canvas::Canvas::new(&fstate.device, &fstate.queue, fstate.config.format, blendops.clone(), [1000, 1000]).unwrap();
 
@@ -66,8 +70,18 @@ impl State for WinState{
                 "assets/test2.jpg"
         ).unwrap());
 
+        canvas.layers[0].borrow_mut().queue_stroke(brush::Stroke::new(
+                &fstate.device,
+                brushops.arc_to("default").unwrap(),
+                brush::StrokeUniform{
+                    pos0: [0.0, 0.0],
+                    pos1: [1.0, 1.0],
+                }
+        ));
+
         Self{
             blendops,
+            brushops,
             canvas,
         }
     }

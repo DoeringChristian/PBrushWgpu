@@ -61,7 +61,7 @@ pub struct ModelTransforms{
 pub struct Model<V: Vert>{
     mesh: Mesh<V>,
     model_transforms: ModelTransforms,
-    uniform_buffer: UniformBuffer<ModelTransforms>,
+    uniform_buffer: UniformBindGroup<ModelTransforms>,
 }
 
 impl<V: Vert> Model<V>{
@@ -77,7 +77,7 @@ impl<V: Vert> Model<V>{
             view: view.into(),
             proj: proj.into()
         };
-        let uniform_buffer = UniformBuffer::new_with_data(device, &model_transforms);
+        let uniform_buffer = UniformBindGroup::new_with_data(device, &model_transforms);
 
         Ok(Self{
             mesh,

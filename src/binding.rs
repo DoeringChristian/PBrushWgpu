@@ -2,6 +2,7 @@
 use anyhow::*;
 use std::marker::PhantomData;
 use std::sync::Arc;
+use std::any::{Any, TypeId};
 
 pub trait ToBindGroupLayout{
     fn create_bind_group_layout(device: &wgpu::Device, label: Option<&str>) -> BindGroupLayoutWithDesc;
@@ -9,6 +10,10 @@ pub trait ToBindGroupLayout{
 
 pub trait GetBindGroupLayout{
     fn get_bind_group_layout<'l>(&'l self) -> &'l BindGroupLayoutWithDesc;
+}
+
+pub trait GetBindGroup{
+    fn get_bind_group<'l>(&'l self) -> &'l wgpu::BindGroup;
 }
 
 
@@ -21,34 +26,6 @@ pub trait ToBindGroup: ToBindGroupLayout{
 pub trait ToBindGroupLayouts{
     fn bind_group_layouts<'l>(&'l self) -> Vec<&'l wgpu::BindGroupLayout>;
 }
-
-
-
-
-impl ToBindGroupLayouts for ForwardPipelineLayout{
-    fn bind_group_layouts<'l>(&'l self) -> Vec<&'l wgpu::BindGroupLayout> {
-        vec!(&self.src.layout, &self.transforms.layout)
-    }
-}
-
-struct ForwardPipelineLayout{
-    src: BindGroupLayout<crate::texture::Texture>,
-    transforms: BindGroupLayout<crate::buffer::UniformBuffer<crate::mesh::ModelTransforms>>,
-}
-
-pub struct BindGroupLayout<T>{
-    _ty: PhantomData<T>,
-    pub layout: wgpu::BindGroupLayout,
-    pub entries: Vec<wgpu::BindGroupLayoutEntry>,
-    pub index: u32,
-}
-
-impl<T> BindGroupLayout<T>{
-    pub fn set_bind_group<'a>(&self, render_pass: &mut wgpu::RenderPass<'a>, bind_group: &'a wgpu::BindGroup){
-        render_pass.set_bind_group(self.index, bind_group, &[]);
-    }
-}
-
 
 
 

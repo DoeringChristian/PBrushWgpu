@@ -1,26 +1,26 @@
 
-/*
-   pub struct Program{
-   pub render_pipeline: wgpu::RenderPipeline,
-   }
-   */
+use crate::binding;
+
+
 use anyhow::*;
-pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, bind_group_layouts: &[&wgpu::BindGroupLayout], vertex_buffer_layouts: &[wgpu::VertexBufferLayout]) -> Result<wgpu::RenderPipeline>{
+pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, pipeline_layout: &wgpu::PipelineLayout, vertex_buffer_layouts: &[wgpu::VertexBufferLayout]) -> Result<wgpu::RenderPipeline>{
 
     let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
         label: Some("shader"),
         source: wgpu::ShaderSource::Wgsl(src.into()),
     });
 
+    /*
     let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor{
         label: Some("Pipeline layout"),
         bind_group_layouts,
         push_constant_ranges: &[],
     });
+    */
 
     let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
         label: Some("Render Pipeline"),
-        layout: Some(&render_pipeline_layout),
+        layout: Some(pipeline_layout),
         vertex: wgpu::VertexState{
             module: &shader,
             entry_point: "vs_main",

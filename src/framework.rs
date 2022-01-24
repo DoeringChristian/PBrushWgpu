@@ -133,6 +133,9 @@ impl<S: 'static +  State> Framework<S>{
 
                         Err(e) => eprintln!("{:?}", e),
                     }
+                },
+                Event::DeviceEvent{device_id, event} => {
+                    println!("{:?}", event);
                 }
 
                 Event::MainEventsCleared => {

@@ -1,4 +1,5 @@
 use anyhow::*;
+use crate::pipeline;
 use crate::texture;
 use crate::mesh;
 use crate::mesh::Drawable;
@@ -25,11 +26,16 @@ impl BlendOp{
 
         let bind_group_layout = texture::Texture::create_bind_group_layout(device, None);
 
+        let render_pipeline_layout = pipeline::RenderPipelineLayoutBuilder::new()
+            .push_bind_group_layout(&bind_group_layout)
+            .push_bind_group_layout(&bind_group_layout)
+            .create(device, None);
+
         let render_pipeline = program::new(
             &device,
             src,
             *format,
-            &[&bind_group_layout.layout, &bind_group_layout.layout],
+            &render_pipeline_layout,
             &[drawable.vert_buffer_layout()]
         )?;
 

@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use std::sync::Arc;
 
 pub struct Canvas {
-    layers: Vec<RefCell<layer::Layer>>,
+    pub layers: Vec<RefCell<layer::Layer>>,
     blendops: Arc<blendop::BlendOpManager>,
     size: [u32; 2],
     tex_tmp0: texture::Texture,
@@ -50,6 +50,15 @@ impl Canvas {
 
     pub fn draw(&mut self, encoder: &mut wgpu::CommandEncoder, queue: &wgpu::Queue, dst: &wgpu::TextureView, dst_size: [u32; 2]) -> Result<()> {
         for (i, layer) in self.layers.iter().enumerate() {
+
+            if i % 2 == 0{
+                layer.borrow_mut().apply_strokes(encoder, &self.tex_tmp2.bind_group)?;
+            }
+            else{
+                layer.borrow_mut().apply_strokes(encoder, &self.tex_tmp1.bind_group)?;
+            }
+
+
             layer.borrow_mut().draw(encoder, queue, &self.tex_tmp0.view, dst_size)?;
             let blendop = layer.borrow().blendop();
 

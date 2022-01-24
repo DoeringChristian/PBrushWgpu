@@ -1,3 +1,4 @@
+use crate::mesh;
 use crate::mesh::*;
 use crate::program;
 use crate::render_target::RenderTarget;
@@ -6,8 +7,13 @@ use crate::vert::Vert;
 use crate::buffer;
 use crate::blendop::BlendOp;
 use crate::vert::Vert2;
+use crate::pipeline;
+use crate::binding::GetBindGroupLayout;
+use crate::brush;
 use anyhow::*;
+use std::collections::VecDeque;
 use std::sync::Arc;
+use crate::binding;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -20,14 +26,20 @@ struct LayerUniform{
 pub struct Layer{
     drawable: Box<dyn Drawable>,
     texture: texture::Texture,
+    // a temporary texture for painting to and from the layer.
+    tex_tmp: texture::Texture,
     render_pipeline: wgpu::RenderPipeline,
 
     translation: glm::Vec3,
     scale: glm::Vec3,
     rotation: glm::Vec4,
-    uniform_buffer: buffer::UniformBuffer<ModelTransforms>,
+    uniform_buffer: buffer::UniformBindGroup<ModelTransforms>,
 
     blendop: Arc<BlendOp>,
+
+    strokes: VecDeque<brush::Stroke>,
+    copy_mesh: mesh::Mesh<Vert2>,
+    copy_pipeline: wgpu::RenderPipeline,
 }
 
 impl Layer{
@@ -41,6 +53,14 @@ impl Layer{
             *format,
         )?;
 
+        let tex_tmp = texture::Texture::new_black(
+            texture.size,
+            device,
+            queue,
+            None,
+            *format
+        )?;
+
         let drawable = Box::new(Mesh::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?);
 
         let model = glm::Mat4::identity();
@@ -51,19 +71,50 @@ impl Layer{
             view: view.into(),
             proj: proj.into()
         };
-        let uniform_buffer = buffer::UniformBuffer::new_with_data(device, &model_transforms);
+        let uniform_buffer = buffer::UniformBindGroup::new_with_data(device, &model_transforms);
+
+        /*
+        let bgl = binding::BindGroupLayoutBuilder::new()
+            .push_entry_all(binding::wgsl::uniform())
+            .create(device, None);
+
+        let bg = binding::BindGroupBuilder::new(&bgl)
+            .resource(uniform_buffer.binding_resource())
+            .create(device, None);
+        */
+
+        let render_pipeline_layout = pipeline::RenderPipelineLayoutBuilder::new()
+            .push_bind_group_layout(&texture.bind_group_layout)
+            .push_bind_group_layout(&uniform_buffer.get_bind_group_layout())
+            .create(device, None);
 
         let render_pipeline = program::new(
             &device,
             include_str!("shaders/forward_model.wgsl"),
             *format,
-            &[&texture.bind_group_layout.layout, &uniform_buffer.binding_group_layout.layout],
+            &render_pipeline_layout,
             &[drawable.vert_buffer_layout()]
         )?;
 
         let translation = glm::vec3(0.0, 0.0, 0.0);
         let scale = glm::vec3(1.0, 1.0, 1.0);
         let rotation = glm::vec4(0.0, 0.0, 1.0, 0.0);
+
+        let strokes: VecDeque<brush::Stroke> = VecDeque::new();
+
+        let copy_mesh = Mesh::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?;
+
+        let copy_pipeline_layout = pipeline::RenderPipelineLayoutBuilder::new()
+            .push_bind_group_layout(&texture.bind_group_layout)
+            .create(device, None);
+
+        let copy_pipeline = program::new(
+            &device,
+            include_str!("shaders/forward.wgsl"),
+            *format,
+            &copy_pipeline_layout,
+            &[copy_mesh.vert_buffer_layout()]
+        )?;
 
         Ok(Self{
             texture,
@@ -74,6 +125,10 @@ impl Layer{
             translation,
             scale,
             rotation,
+            tex_tmp,
+            strokes,
+            copy_mesh,
+            copy_pipeline,
         })
     }
 
@@ -85,6 +140,13 @@ impl Layer{
             None,
             *format,
         )?;
+        let tex_tmp = texture::Texture::new_black(
+            texture.size,
+            device,
+            queue,
+            None,
+            *format
+        )?;
 
         let drawable = Box::new(Mesh::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?);
 
@@ -96,19 +158,40 @@ impl Layer{
             view: view.into(),
             proj: proj.into()
         };
-        let uniform_buffer = buffer::UniformBuffer::new_with_data(device, &model_transforms);
+        let uniform_buffer = buffer::UniformBindGroup::new_with_data(device, &model_transforms);
+
+        let render_pipeline_layout = pipeline::RenderPipelineLayoutBuilder::new()
+            .push_bind_group_layout(&texture.bind_group_layout)
+            .push_bind_group_layout(&uniform_buffer.get_bind_group_layout())
+            .create(device, None);
 
         let render_pipeline = program::new(
             &device,
             include_str!("shaders/forward_model.wgsl"),
             *format,
-            &[&texture.bind_group_layout.layout, &uniform_buffer.binding_group_layout.layout],
+            &render_pipeline_layout,
             &[drawable.vert_buffer_layout()]
         )?;
 
         let translation = glm::vec3(0.0, 0.0, 0.0);
         let scale = glm::vec3(1000.0, 1000.0, 1000.0);
         let rotation = glm::vec4(0.0, 0.0, 1.0, 0.0);
+
+        let strokes: VecDeque<brush::Stroke> = VecDeque::new();
+
+        let copy_mesh = Mesh::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?;
+
+        let copy_pipeline_layout = pipeline::RenderPipelineLayoutBuilder::new()
+            .push_bind_group_layout(&texture.bind_group_layout)
+            .create(device, None);
+
+        let copy_pipeline = program::new(
+            &device,
+            include_str!("shaders/forward.wgsl"),
+            *format,
+            &copy_pipeline_layout,
+            &[copy_mesh.vert_buffer_layout()]
+        )?;
 
         Ok(Self{
             texture,
@@ -119,11 +202,16 @@ impl Layer{
             translation,
             scale,
             rotation,
+            tex_tmp,
+            strokes,
+            copy_mesh,
+            copy_pipeline,
         })
     }
 
     pub fn draw(&mut self, encoder: &mut wgpu::CommandEncoder, queue: &wgpu::Queue, dst: &wgpu::TextureView, dst_size: [u32; 2]) -> Result<()>{
         //self.blendop.draw(encoder, dst, &self.texture.bind_group, &itex.bind_group)?;
+
 
         let axisv = glm::vec3(self.rotation.x, self.rotation.y, self.rotation.z);
         let axis: nalgebra::Unit<glm::Vec3> = nalgebra::Unit::new_normalize(axisv);
@@ -158,5 +246,32 @@ impl Layer{
 
     pub fn blendop(&self) -> Arc<BlendOp>{
         self.blendop.clone()
+    }
+
+    pub fn queue_stroke(&mut self, stroke: brush::Stroke){
+        self.strokes.push_back(stroke);
+    }
+
+    pub fn apply_strokes(&mut self, encoder: &mut wgpu::CommandEncoder, prev: &wgpu::BindGroup) -> Result<()>{
+        for stroke in &self.strokes{
+            let mut bind_groups = pipeline::RenderPassBindGroups::new();
+            bind_groups.push_bind_group(prev);
+            bind_groups.push_bind_group(&self.texture.bind_group);
+                
+            stroke.draw(encoder, &self.tex_tmp.view, &mut bind_groups)?;
+
+            {
+                let mut render_pass = self.texture.view.render_pass_clear(encoder, None)?;
+
+                render_pass.set_pipeline(&self.copy_pipeline);
+                render_pass.set_bind_group(0, &self.tex_tmp.bind_group, &[]);
+
+                self.copy_mesh.draw(&mut render_pass);
+            }
+        }
+
+        self.strokes.clear();
+
+        Ok(())
     }
 }

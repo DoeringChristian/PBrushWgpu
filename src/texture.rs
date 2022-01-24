@@ -16,6 +16,7 @@ pub struct Texture{
     pub view: wgpu::TextureView,
     pub sampler: wgpu::Sampler,
     pub format: wgpu::TextureFormat,
+    pub size: [u32; 2],
 
     pub bind_group_layout: BindGroupLayoutWithDesc,
     pub bind_group: wgpu::BindGroup,
@@ -115,6 +116,7 @@ impl Texture{
             format,
             bind_group,
             bind_group_layout,
+            size,
         })
     }
 
@@ -137,7 +139,7 @@ impl Texture{
 
         let dims = img.dimensions();
 
-        let size = wgpu::Extent3d{
+        let extent = wgpu::Extent3d{
             width: dims.0,
             height: dims.1,
             depth_or_array_layers: 1,
@@ -145,7 +147,7 @@ impl Texture{
         let texture = device.create_texture(
             &wgpu::TextureDescriptor{
                 label,
-                size,
+                size: extent,
                 mip_level_count: 1,
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
@@ -170,7 +172,7 @@ impl Texture{
                 bytes_per_row: std::num::NonZeroU32::new(4 * dims.0),
                 rows_per_image: std::num::NonZeroU32::new(dims.1),
             },
-            size,
+            extent,
         );
         let texture_view_desc = wgpu::TextureViewDescriptor{
             format: Some(format),
@@ -197,6 +199,8 @@ impl Texture{
             .sampler(&sampler)
             .create(device, Some("Texture Bind Group"));
 
+        let size = [dims.0, dims.1];
+
         Ok(Self{
             texture,
             view,
@@ -204,6 +208,7 @@ impl Texture{
             format,
             bind_group,
             bind_group_layout,
+            size,
         })
     }
 
