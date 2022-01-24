@@ -77,28 +77,6 @@ impl<'rp> RenderPassBuilder<'rp>{
 }
 
 
-pub struct RenderPassBindGroups<'bg>{
-    bind_groups: Vec<&'bg wgpu::BindGroup>,
-}
-
-impl<'bg> RenderPassBindGroups<'bg>{
-    pub fn new() -> Self{
-        Self{
-            bind_groups: Vec::new()
-        }
-    }
-
-    pub fn push_bind_group(&mut self, bind_group: &'bg wgpu::BindGroup){
-        self.bind_groups.push(bind_group);
-    }
-
-    pub fn set_bind_groups(&self, render_pass: &mut wgpu::RenderPass<'bg>){
-        for (i, bind_group) in self.bind_groups.iter().enumerate(){
-            render_pass.set_bind_group(i as u32, bind_group, &[]);
-        }
-    }
-}
-
 fn shader_load(device: &wgpu::Device, path: &str, label: Option<&str>) -> Result<wgpu::ShaderModule>{
     let mut f = File::open(path)?;
     let metadata = fs::metadata(path)?;
