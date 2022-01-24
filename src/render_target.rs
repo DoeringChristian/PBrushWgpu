@@ -12,6 +12,52 @@ pub trait RenderTarget{
     fn render_pass_load<'a>(&'a self, encoder: &'a mut wgpu::CommandEncoder, label: Option<&'a str>) -> Result<wgpu::RenderPass<'a>>;
 }
 
+pub trait ColorAttachment{
+    fn color_attachment_clear(&self) -> wgpu::RenderPassColorAttachment;
+    fn color_attachment_clear_with(&self, color: wgpu::Color) -> wgpu::RenderPassColorAttachment;
+    fn color_attachment_load(&self) -> wgpu::RenderPassColorAttachment;
+}
+
+impl ColorAttachment for wgpu::TextureView{
+    fn color_attachment_clear(&self) -> wgpu::RenderPassColorAttachment {
+        wgpu::RenderPassColorAttachment{
+            view: self,
+            resolve_target: None,
+            ops: wgpu::Operations{
+                load: wgpu::LoadOp::Clear(wgpu::Color{
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                    a: 0.0,
+                }),
+                store: true,
+            },
+        }
+    }
+
+    fn color_attachment_clear_with(&self, color: wgpu::Color) -> wgpu::RenderPassColorAttachment{
+        wgpu::RenderPassColorAttachment{
+            view: self,
+            resolve_target: None,
+            ops: wgpu::Operations{
+                load: wgpu::LoadOp::Clear(color),
+                store: true,
+            },
+        }
+    }
+
+    fn color_attachment_load(&self) -> wgpu::RenderPassColorAttachment{
+        wgpu::RenderPassColorAttachment{
+            view: self,
+            resolve_target: None,
+            ops: wgpu::Operations{
+                load: wgpu::LoadOp::Load,
+                store: true,
+            },
+        }
+    }
+}
+
 impl RenderTarget for wgpu::TextureView{
     fn render_pass_clear<'a>(&'a self, encoder: &'a mut wgpu::CommandEncoder, label: Option<&'a str>) -> Result<wgpu::RenderPass<'a>> {
         Ok(encoder.begin_render_pass(&wgpu::RenderPassDescriptor{
@@ -63,13 +109,13 @@ impl RenderTarget for [&wgpu::TextureView]{
                     resolve_target: None,
                     ops: wgpu::Operations{
                         load: wgpu::LoadOp::Clear( wgpu::Color{
-                                      r: 0.0,
-                                      g: 0.0,
-                                      b: 0.0,
-                                      a: 0.0,
-                                  }
+                            r: 0.0,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 0.0,
+                        }
                               ),
-                        store: true,
+                              store: true,
                     },
                 }
             );

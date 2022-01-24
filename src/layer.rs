@@ -1,6 +1,7 @@
 use crate::mesh;
 use crate::mesh::*;
 use crate::program;
+use crate::render_target::ColorAttachment;
 use crate::render_target::RenderTarget;
 use crate::texture;
 use crate::vert::Vert;
@@ -254,11 +255,16 @@ impl Layer{
 
     pub fn apply_strokes(&mut self, encoder: &mut wgpu::CommandEncoder, prev: &wgpu::BindGroup) -> Result<()>{
         for stroke in &self.strokes{
-            let mut bind_groups = pipeline::RenderPassBindGroups::new();
-            bind_groups.push_bind_group(prev);
-            bind_groups.push_bind_group(&self.texture.bind_group);
-                
-            stroke.draw(encoder, &self.tex_tmp.view, &mut bind_groups)?;
+            {
+                let mut render_pass = pipeline::RenderPassBuilder::new()
+                    .push_color_attachment(self.tex_tmp.view.color_attachment_clear())
+                    .begin(encoder, None);
+
+                render_pass.set_bind_group(0, prev, &[]);
+                render_pass.set_bind_group(1, &self.texture.bind_group, &[]);
+
+                stroke.draw(&mut render_pass)?;
+            }
 
             {
                 let mut render_pass = self.texture.view.render_pass_clear(encoder, None)?;

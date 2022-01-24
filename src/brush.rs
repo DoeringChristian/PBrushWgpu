@@ -49,16 +49,14 @@ impl BrushOp{
     }
 
     // TODO: change bind_groups to render_pass.
-    pub fn draw(&self, encoder: &mut wgpu::CommandEncoder, dst: &wgpu::TextureView, bind_groups: &pipeline::RenderPassBindGroups) -> Result<()>{
+    pub fn draw<'rp>(&'rp self, render_pass: &mut wgpu::RenderPass<'rp>) -> Result<()>{
 
         // TODO: move out of basic drawing function.
-        let mut render_pass = dst.render_pass_clear(encoder, None)?;
+        //let mut render_pass = dst.render_pass_clear(encoder, None)?;
 
         render_pass.set_pipeline(&self.render_pipeline);
 
-        bind_groups.set_bind_groups(&mut render_pass);
-
-        self.drawable.draw(&mut render_pass);
+        self.drawable.draw(render_pass);
 
         Ok(())
     }
@@ -88,11 +86,11 @@ impl Stroke{
         }
     }
 
-    pub fn draw<'bg>(&'bg self, encoder: &mut wgpu::CommandEncoder, dst: &wgpu::TextureView, bind_groups: &'bg mut pipeline::RenderPassBindGroups<'bg>) -> Result<()>{
+    pub fn draw<'rp>(&'rp self, render_pass: &mut wgpu::RenderPass<'rp>) -> Result<()>{
 
-        bind_groups.push_bind_group(&self.uniform.binding_group);
+        render_pass.set_bind_group(2, &self.uniform.binding_group, &[]);
         
-        self.brushop.draw(encoder, dst, bind_groups)?;
+        self.brushop.draw(render_pass)?;
 
         Ok(())
     }

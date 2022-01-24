@@ -124,3 +124,6 @@ fn shader_load(device: &wgpu::Device, path: &str, label: Option<&str>) -> Result
 struct RenderPipelineBuilder{
     shader: wgpu::ShaderModule,
 }
+
+// TODO:
+// Counting RenderPass
