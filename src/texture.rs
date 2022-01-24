@@ -245,3 +245,10 @@ impl ToBindGroup for Texture{
             .create(device, label)
     }
 }
+
+/// TODO: remove.
+impl GetBindGroupLayout for Texture{
+    fn get_bind_group_layout<'l>(&'l self) -> &'l BindGroupLayoutWithDesc {
+        &self.bind_group_layout
+    }
+}

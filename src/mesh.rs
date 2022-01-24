@@ -86,7 +86,6 @@ impl<V: Vert> Model<V>{
         })
     }
     pub fn draw<'rp>(&'rp self, queue: &wgpu::Queue, render_pass: &mut wgpu::RenderPass<'rp>) {
-
         //self.uniform_buffer.update(queue, &self.model_transforms);
 
         render_pass.set_bind_group(1, &self.uniform_buffer.binding_group, &[]);

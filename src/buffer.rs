@@ -24,13 +24,6 @@ pub trait ToUniformBuffer{
 
 
 impl<T: bytemuck::Pod> ToUniformBuffer for T{
-    /*
-    fn uniform_label() -> &'static str{
-        let type_name = std::any::type_name::<Self>();
-        let pos = type_name.rfind(':').unwrap();
-        &type_name[(pos + 1)..]
-    }
-    */
     fn create_uniform_buffer(&self, device: &wgpu::Device) -> Result<wgpu::Buffer> {
 
         let buffer = device.create_buffer(&wgpu::BufferDescriptor{
@@ -160,3 +153,8 @@ impl<C: bytemuck::Pod> UniformBuffer<C>{
 
 }
 
+impl<C: bytemuck::Pod> binding::GetBindGroupLayout for UniformBuffer<C>{
+    fn get_bind_group_layout<'l>(&'l self) -> &'l binding::BindGroupLayoutWithDesc {
+        &self.binding_group_layout
+    }
+}
