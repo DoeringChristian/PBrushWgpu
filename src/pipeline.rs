@@ -143,16 +143,13 @@ impl<'l> PipelineLayoutBuilder<'l>{
 /// 
 ///
 
-pub struct RenderPassPointer<'rp, 'rpp>{
-    pub render_pass: &'rpp RenderPass<'rp>,
-}
 
-pub struct RenderPassPipeline<'rp>{
-    pub render_pass: RenderPass<'rp>,
+pub struct RenderPassPipeline<'rp, 'rppl>{
+    pub render_pass: &'rppl mut RenderPass<'rp>,
     pub pipeline: &'rp RenderPipeline,
 }
 
-impl<'rp> RenderPassPipeline<'rp>{
+impl<'rp, 'rppl> RenderPassPipeline<'rp, 'rppl>{
     pub fn set_bind_group_named(&mut self, name: &str, bind_group: &'rp wgpu::BindGroup, offsets: &'rp [wgpu::DynamicOffset]){
         self.render_pass.render_pass.set_bind_group(
             self.pipeline.bind_group_names[name] as u32, 
@@ -177,7 +174,7 @@ pub struct RenderPass<'rp>{
 }
 
 impl<'rp> RenderPass<'rp>{
-    pub fn set_pipeline(mut self, pipeline: &'rp RenderPipeline) -> RenderPassPipeline<'rp>{
+    pub fn set_pipeline(&mut self, pipeline: &'rp RenderPipeline) -> RenderPassPipeline<'rp, '_>{
         self.render_pass.set_pipeline(&pipeline.pipeline);
         RenderPassPipeline{
             render_pass: self,

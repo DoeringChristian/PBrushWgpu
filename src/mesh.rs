@@ -10,7 +10,7 @@ use anyhow::*;
 use std::marker::PhantomData;
 
 pub trait Drawable{
-    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp>);
+    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>);
     fn vert_buffer_layout(&self) -> wgpu::VertexBufferLayout<'static>;
 }
 
@@ -41,7 +41,7 @@ impl<V: Vert> Mesh<V>{
 }
 
 impl<V: Vert> Drawable for Mesh<V>{
-    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp>) {
+    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>) {
 
         render_pass.set_vertex_buffer("model", self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
@@ -87,7 +87,7 @@ impl<V: Vert> Model<V>{
             model_transforms,
         })
     }
-    pub fn draw<'rp>(&'rp self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp>) {
+    pub fn draw<'rp>(&'rp self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>) {
         //self.uniform_buffer.update(queue, &self.model_transforms);
 
         render_pass.set_bind_group_named("transforms", &self.uniform_buffer.binding_group, &[]);
