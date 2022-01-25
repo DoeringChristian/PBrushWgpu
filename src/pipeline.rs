@@ -8,6 +8,7 @@ use std::sync::Arc;
 use crate::binding;
 use std::borrow::Cow;
 use anyhow::*;
+use core::ops::Range;
 
 
 ///
@@ -143,12 +144,13 @@ impl<'l> PipelineLayoutBuilder<'l>{
 /// 
 /// The 'rrp lifetime referrs to the render_pass pointer.
 ///
-pub struct RenderPassPipeline<'rp, 'rpp>{
-    pub render_pass: &'rpp mut RenderPass<'rp>,
+/// Not quite sure about lifetime inheritance.
+pub struct RenderPassPipeline<'rp>{
+    pub render_pass: RenderPass<'rp>,
     pub pipeline: &'rp RenderPipeline,
 }
 
-impl<'rp, 'rpp> RenderPassPipeline<'rp, 'rpp>{
+impl<'rp> RenderPassPipeline<'rp>{
     pub fn set_bind_group(&mut self, name: &str, bind_group: &'rp wgpu::BindGroup, offsets: &'rp [wgpu::DynamicOffset]){
         self.render_pass.render_pass.set_bind_group(
             self.pipeline.bind_group_names[name] as u32, 
@@ -166,6 +168,29 @@ impl<'rp, 'rpp> RenderPassPipeline<'rp, 'rpp>{
     pub fn set_index_buffer(&mut self, buffer_slice: wgpu::BufferSlice<'rp>, format: wgpu::IndexFormat){
         self.render_pass.render_pass.set_index_buffer(buffer_slice, format);
     }
+
+    pub fn draw(&mut self, vertices: Range<u32>, instances: Range<u32>){
+        self.render_pass.render_pass.draw(vertices, instances);
+    }
+
+    pub fn draw_indexed(&mut self, indices: Range<u32>, base_vertex: i32, instances: Range<u32>){
+        self.render_pass.render_pass.draw_indexed(indices, base_vertex, instances);
+    }
+
+    pub fn set_pipeline(mut self, pipeline: &'rp RenderPipeline) -> Self{
+        self.render_pass.render_pass.set_pipeline(&pipeline.pipeline);
+        Self{
+            render_pass: self.render_pass,
+            pipeline,
+        }
+    }
+
+    /// Does not actually reset pipeline from wgpu render_pass
+    pub fn unset_pipeline(self) -> RenderPass<'rp>{
+        RenderPass{
+            render_pass: self.render_pass.render_pass,
+        }
+    }
 }
 
 pub struct RenderPass<'rp>{
@@ -173,7 +198,7 @@ pub struct RenderPass<'rp>{
 }
 
 impl<'rp> RenderPass<'rp>{
-    pub fn set_pipeline(&mut self, pipeline: &'rp RenderPipeline) -> RenderPassPipeline<'rp, '_>{
+    pub fn set_pipeline(mut self, pipeline: &'rp RenderPipeline) -> RenderPassPipeline<'rp>{
         self.render_pass.set_pipeline(&pipeline.pipeline);
         RenderPassPipeline{
             render_pass: self,
