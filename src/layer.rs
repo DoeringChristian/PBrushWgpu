@@ -272,6 +272,7 @@ impl Layer{
 
                 let mut render_pass_pipeline = render_pass.set_pipeline(stroke.get_pipeline());
 
+
                 render_pass_pipeline.set_bind_group_named("background", prev, &[]);
                 render_pass_pipeline.set_bind_group_named("self", &self.texture.bind_group, &[]);
 
@@ -279,13 +280,16 @@ impl Layer{
 
             }
 
-            let mut render_pass = pipeline::RenderPassBuilder::new()
-                .push_color_attachment(self.texture.view.color_attachment_clear())
-                .begin(encoder, None)
-                .set_pipeline(&self.copy_pipeline)
-                .set_bind_group_named("src", &self.tex_tmp.bind_group, &[]);
+            {
+                let mut render_pass = pipeline::RenderPassBuilder::new()
+                    .push_color_attachment(self.texture.view.color_attachment_clear())
+                    .begin(encoder, None);
 
-            self.copy_mesh.draw(&mut render_pass);
+                let mut render_pass_pipeline = render_pass.set_pipeline(&self.copy_pipeline);
+                render_pass_pipeline.set_bind_group_named("src", &self.tex_tmp.bind_group, &[]);
+
+                self.copy_mesh.draw(&mut render_pass_pipeline);
+            }
         }
 
         self.strokes.clear();
