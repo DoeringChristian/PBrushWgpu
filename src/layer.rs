@@ -29,7 +29,7 @@ pub struct Layer{
     texture: texture::Texture,
     // a temporary texture for painting to and from the layer.
     tex_tmp: texture::Texture,
-    render_pipeline: wgpu::RenderPipeline,
+    render_pipeline: pipeline::RenderPipeline,
 
     translation: glm::Vec3,
     scale: glm::Vec3,
@@ -40,7 +40,7 @@ pub struct Layer{
 
     strokes: VecDeque<brush::Stroke>,
     copy_mesh: mesh::Mesh<Vert2>,
-    copy_pipeline: wgpu::RenderPipeline,
+    copy_pipeline: pipeline::RenderPipeline,
 }
 
 impl Layer{
@@ -84,9 +84,9 @@ impl Layer{
             .create(device, None);
         */
 
-        let render_pipeline_layout = pipeline::RenderPipelineLayoutBuilder::new()
-            .push_bind_group_layout(&texture.bind_group_layout)
-            .push_bind_group_layout(&uniform_buffer.get_bind_group_layout())
+        let render_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
+            .push_named("src", &texture.bind_group_layout)
+            .push_named("transforms", &uniform_buffer.get_bind_group_layout())
             .create(device, None);
 
         let render_pipeline = program::new(
@@ -105,8 +105,8 @@ impl Layer{
 
         let copy_mesh = Mesh::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?;
 
-        let copy_pipeline_layout = pipeline::RenderPipelineLayoutBuilder::new()
-            .push_bind_group_layout(&texture.bind_group_layout)
+        let copy_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
+            .push_named("src", &texture.bind_group_layout)
             .create(device, None);
 
         let copy_pipeline = program::new(
@@ -161,9 +161,9 @@ impl Layer{
         };
         let uniform_buffer = buffer::UniformBindGroup::new_with_data(device, &model_transforms);
 
-        let render_pipeline_layout = pipeline::RenderPipelineLayoutBuilder::new()
-            .push_bind_group_layout(&texture.bind_group_layout)
-            .push_bind_group_layout(&uniform_buffer.get_bind_group_layout())
+        let render_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
+            .push_named("src", &texture.bind_group_layout)
+            .push_named("transforms", &uniform_buffer.get_bind_group_layout())
             .create(device, None);
 
         let render_pipeline = program::new(
@@ -182,8 +182,8 @@ impl Layer{
 
         let copy_mesh = Mesh::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?;
 
-        let copy_pipeline_layout = pipeline::RenderPipelineLayoutBuilder::new()
-            .push_bind_group_layout(&texture.bind_group_layout)
+        let copy_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
+            .push_named("src", &texture.bind_group_layout)
             .create(device, None);
 
         let copy_pipeline = program::new(
@@ -234,7 +234,9 @@ impl Layer{
 
         self.uniform_buffer.update(queue, &model_transforms);
 
-        let mut render_pass = dst.render_pass_clear(encoder, None)?;
+        let mut render_pass = pipeline::RenderPassBuilder::new()
+            .push_color_attachment(dst.color_attachment_clear())
+            .begin(encoder, None);
 
         render_pass.set_pipeline(&self.render_pipeline);
         render_pass.set_bind_group(0, &self.texture.bind_group, &[]);
@@ -267,7 +269,9 @@ impl Layer{
             }
 
             {
-                let mut render_pass = self.texture.view.render_pass_clear(encoder, None)?;
+                let mut render_pass = pipeline::RenderPassBuilder::new()
+                    .push_color_attachment(self.texture.view.color_attachment_clear())
+                    .begin(encoder, None);
 
                 render_pass.set_pipeline(&self.copy_pipeline);
                 render_pass.set_bind_group(0, &self.tex_tmp.bind_group, &[]);

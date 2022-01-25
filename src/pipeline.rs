@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 use std::fs;
 use std::fs::File;
@@ -7,31 +8,42 @@ use crate::binding;
 use std::borrow::Cow;
 use anyhow::*;
 
-pub struct RenderPipelineLayoutBuilder<'l>{
-    bind_group_layouts_desc: Vec<&'l binding::BindGroupLayoutWithDesc>,
-    bind_group_layouts: Vec<&'l wgpu::BindGroupLayout>,
-    push_constant_ranges: Vec<wgpu::PushConstantRange>,
+pub struct RenderPipeline{
+    pub pipeline: wgpu::RenderPipeline,
+    pub sets: HashMap<String, usize>,
 }
 
-impl<'l> RenderPipelineLayoutBuilder<'l>{
+pub struct PipelineLayout{
+    pub layout: wgpu::PipelineLayout,
+    pub sets: HashMap<String, usize>,
+}
+
+pub struct PipelineLayoutBuilder<'l>{
+    bind_group_layouts: Vec<&'l binding::BindGroupLayoutWithDesc>,
+    push_constant_ranges: Vec<wgpu::PushConstantRange>,
+    sets: HashMap<String, usize>,
+    index: usize,
+}
+
+impl<'l> PipelineLayoutBuilder<'l>{
     pub fn new() -> Self{
         Self{
-            bind_group_layouts_desc: Vec::new(),
             bind_group_layouts: Vec::new(),
             push_constant_ranges: Vec::new(),
+            sets: HashMap::new(),
+            index: 0,
         }
     }
 
-    pub fn push_bind_group_layout(mut self, bind_group_layout: &'l binding::BindGroupLayoutWithDesc) -> Self{
-        self.bind_group_layouts_desc.push(bind_group_layout);
-        self.bind_group_layouts.push(&bind_group_layout.layout);
-        self
-    }
-
-    pub fn push_bind_group_layouts(mut self, bind_group_layouts: &[&'l binding::BindGroupLayoutWithDesc]) -> Self{
-        for bind_group_layout in bind_group_layouts{
-            self.bind_group_layouts_desc.push(&bind_group_layout);
-            self.bind_group_layouts.push(&bind_group_layout.layout);
+    pub fn push_named(mut self, name: &str, bind_group_layout: &'l binding::BindGroupLayoutWithDesc) -> Self{
+        if let Some(index) = self.sets.get(name){
+            self.bind_group_layouts.remove(*index);
+            self.bind_group_layouts.insert(*index, bind_group_layout);
+        }
+        else{
+            self.sets.insert(name.to_string(), self.index);
+            self.index += 1;
+            self.bind_group_layouts.push(bind_group_layout);
         }
         self
     }
@@ -41,12 +53,46 @@ impl<'l> RenderPipelineLayoutBuilder<'l>{
         self
     }
 
-    pub fn create(self, device: &wgpu::Device, label: Option<&str>) -> wgpu::PipelineLayout{
-        device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor{
-            label,
-            bind_group_layouts: &self.bind_group_layouts,
-            push_constant_ranges: &self.push_constant_ranges,
-        })
+    pub fn create(self, device: &wgpu::Device, label: Option<&str>) -> PipelineLayout{
+
+        let mut bind_group_layouts = Vec::with_capacity(self.bind_group_layouts.len());
+        for bind_group_layout_desc in self.bind_group_layouts{
+            bind_group_layouts.push(&bind_group_layout_desc.layout);
+        }
+
+        PipelineLayout{
+            layout: device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor{
+                label,
+                bind_group_layouts: &bind_group_layouts,
+                push_constant_ranges: &self.push_constant_ranges,
+            }),
+            sets: self.sets,
+        }
+    }
+}
+
+pub struct RenderPass<'rp>{
+    pub pass: wgpu::RenderPass<'rp>,
+    pub pipeline: Option<&'rp RenderPipeline>,
+}
+
+impl<'rp> RenderPass<'rp>{
+    #[inline]
+    pub fn set_pipeline(&mut self, pipeline: &'rp RenderPipeline){
+        self.pipeline = Some(pipeline);
+        self.pass.set_pipeline(&pipeline.pipeline);
+    }
+
+    #[inline]
+    pub fn set_bind_group(&mut self, index: u32, bind_group: &'rp wgpu::BindGroup, offsets: &'rp [wgpu::DynamicOffset]){
+        self.pass.set_bind_group(index, bind_group, offsets);
+    }
+
+    #[inline]
+    pub fn set_bind_group_named(&mut self, name: &str, bind_group: &'rp wgpu::BindGroup, offsets: &'rp [wgpu::DynamicOffset]){
+        if let Some(pipeline) = self.pipeline{
+            self.pass.set_bind_group(pipeline.sets[name] as u32, bind_group, offsets);
+        }
     }
 }
 
@@ -67,12 +113,15 @@ impl<'rp> RenderPassBuilder<'rp>{
     }
 
     // TODO: add depth_stencil_attachment
-    pub fn begin(self, encoder: &'rp mut wgpu::CommandEncoder, label: Option<&'rp str>) -> wgpu::RenderPass<'rp>{
-        encoder.begin_render_pass(&wgpu::RenderPassDescriptor{
-            label,
-            color_attachments: &self.color_attachments,
-            depth_stencil_attachment: None,
-        })
+    pub fn begin(self, encoder: &'rp mut wgpu::CommandEncoder, label: Option<&'rp str>) -> RenderPass<'rp>{
+        RenderPass{
+            pass: encoder.begin_render_pass(&wgpu::RenderPassDescriptor{
+                label,
+                color_attachments: &self.color_attachments,
+                depth_stencil_attachment: None,
+            }),
+            pipeline: None,
+        }
     }
 }
 

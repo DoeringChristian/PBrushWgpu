@@ -1,5 +1,6 @@
 use anyhow::*;
 use crate::pipeline;
+use crate::render_target::ColorAttachment;
 use crate::texture;
 use crate::mesh;
 use crate::mesh::Drawable;
@@ -17,7 +18,7 @@ use std::sync::Arc;
 ///
 pub struct BlendOp{
     drawable: Box<dyn mesh::Drawable>,
-    render_pipeline: wgpu::RenderPipeline,
+    render_pipeline: pipeline::RenderPipeline,
 }
 
 impl BlendOp{
@@ -26,9 +27,9 @@ impl BlendOp{
 
         let bind_group_layout = texture::Texture::create_bind_group_layout(device, None);
 
-        let render_pipeline_layout = pipeline::RenderPipelineLayoutBuilder::new()
-            .push_bind_group_layout(&bind_group_layout)
-            .push_bind_group_layout(&bind_group_layout)
+        let render_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
+            .push_named("src", &bind_group_layout)
+            .push_named("dst", &bind_group_layout)
             .create(device, None);
 
         let render_pipeline = program::new(
@@ -46,11 +47,13 @@ impl BlendOp{
     }
 
     pub fn draw(&self, encoder: &mut wgpu::CommandEncoder, queue: &wgpu::Queue, dst: &wgpu::TextureView, src0: &wgpu::BindGroup, src1: &wgpu::BindGroup) -> Result<()>{
-        let mut render_pass = dst.render_pass_clear(encoder, None)?;
+        let mut render_pass = pipeline::RenderPassBuilder::new()
+            .push_color_attachment(dst.color_attachment_clear())
+            .begin(encoder, None);
 
         render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, src0, &[]);
-        render_pass.set_bind_group(1, src1, &[]);
+        render_pass.set_bind_group_named("src", src0, &[]);
+        render_pass.set_bind_group_named("dst", src1, &[]);
 
         self.drawable.draw(&mut render_pass);
 

@@ -13,7 +13,7 @@ use crate::binding::ToBindGroupLayout;
 
 
 pub struct BrushOp{
-    render_pipeline: wgpu::RenderPipeline,
+    render_pipeline: pipeline::RenderPipeline,
     drawable: Arc<dyn mesh::Drawable>,
 }
 
@@ -28,10 +28,10 @@ impl BrushOp{
         let texture_bgl = texture::Texture::create_bind_group_layout(device, None);
         let uniform_bgl = buffer::UniformBindGroup::<StrokeUniform>::create_bind_group_layout(device, None);
 
-        let render_pipeline_layout = pipeline::RenderPipelineLayoutBuilder::new()
-            .push_bind_group_layout(&texture_bgl)
-            .push_bind_group_layout(&texture_bgl)
-            .push_bind_group_layout(&uniform_bgl)
+        let render_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
+            .push_named("background", &texture_bgl)
+            .push_named("self", &texture_bgl)
+            .push_named("stroke", &uniform_bgl)
             .create(device, None);
 
         let render_pipeline = program::new(
@@ -49,7 +49,7 @@ impl BrushOp{
     }
 
     // TODO: change bind_groups to render_pass.
-    pub fn draw<'rp>(&'rp self, render_pass: &mut wgpu::RenderPass<'rp>) -> Result<()>{
+    pub fn draw<'rp>(&'rp self, render_pass: &mut pipeline::RenderPass<'rp>) -> Result<()>{
 
         // TODO: move out of basic drawing function.
         //let mut render_pass = dst.render_pass_clear(encoder, None)?;
@@ -86,7 +86,7 @@ impl Stroke{
         }
     }
 
-    pub fn draw<'rp>(&'rp self, render_pass: &mut wgpu::RenderPass<'rp>) -> Result<()>{
+    pub fn draw<'rp>(&'rp self, render_pass: &mut pipeline::RenderPass<'rp>) -> Result<()>{
 
         render_pass.set_bind_group(2, &self.uniform.binding_group, &[]);
         

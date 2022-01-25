@@ -1,9 +1,9 @@
 
-use crate::binding;
+use crate::{binding, pipeline};
 
 
 use anyhow::*;
-pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, pipeline_layout: &wgpu::PipelineLayout, vertex_buffer_layouts: &[wgpu::VertexBufferLayout]) -> Result<wgpu::RenderPipeline>{
+pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, pipeline_layout: &pipeline::PipelineLayout, vertex_buffer_layouts: &[wgpu::VertexBufferLayout]) -> Result<pipeline::RenderPipeline>{
 
     let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
         label: Some("shader"),
@@ -20,7 +20,7 @@ pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, pipeli
 
     let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
         label: Some("Render Pipeline"),
-        layout: Some(pipeline_layout),
+        layout: Some(&pipeline_layout.layout),
         vertex: wgpu::VertexState{
             module: &shader,
             entry_point: "vs_main",
@@ -58,6 +58,9 @@ pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, pipeli
     });
 
     Ok(
-        render_pipeline,
+        pipeline::RenderPipeline{
+            pipeline: render_pipeline,
+            sets: pipeline_layout.sets.clone(),
+        }
     )
 }
