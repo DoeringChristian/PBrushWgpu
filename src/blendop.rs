@@ -32,12 +32,16 @@ impl BlendOp{
             .push_named("dst", &bind_group_layout)
             .create(device, None);
 
+        let vertex_state_layout = pipeline::VertexStateLayoutBuilder::new()
+            .push_named("model", drawable.vert_buffer_layout())
+            .build();
+
         let render_pipeline = program::new(
             &device,
             src,
             *format,
             &render_pipeline_layout,
-            &[drawable.vert_buffer_layout()]
+            &vertex_state_layout,
         )?;
 
         Ok(Self{
@@ -47,15 +51,17 @@ impl BlendOp{
     }
 
     pub fn draw(&self, encoder: &mut wgpu::CommandEncoder, queue: &wgpu::Queue, dst: &wgpu::TextureView, src0: &wgpu::BindGroup, src1: &wgpu::BindGroup) -> Result<()>{
-        let mut render_pass = pipeline::RenderPassBuilder::new()
-            .push_color_attachment(dst.color_attachment_clear())
-            .begin(encoder, None);
+        {
+            let mut render_pass = pipeline::RenderPassBuilder::new()
+                .push_color_attachment(dst.color_attachment_clear())
+                .begin(encoder, None);
 
-        render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group_named("src", src0, &[]);
-        render_pass.set_bind_group_named("dst", src1, &[]);
+            let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
+            render_pass_pipeline.set_bind_group_named("src", src0, &[]);
+            render_pass_pipeline.set_bind_group_named("dst", src1, &[]);
 
-        self.drawable.draw(&mut render_pass);
+            self.drawable.draw(&mut render_pass_pipeline);
+        }
 
         Ok(())
     }

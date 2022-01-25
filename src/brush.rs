@@ -34,12 +34,16 @@ impl BrushOp{
             .push_named("stroke", &uniform_bgl)
             .create(device, None);
 
+        let vertex_state_layout = pipeline::VertexStateLayoutBuilder::new()
+            .push_named("model", drawable.vert_buffer_layout())
+            .build();
+
         let render_pipeline = program::new(
             &device,
             src,
             format,
             &render_pipeline_layout,
-            &[drawable.vert_buffer_layout()]
+            &vertex_state_layout,
         )?;
 
         Ok(Self{
@@ -49,16 +53,14 @@ impl BrushOp{
     }
 
     // TODO: change bind_groups to render_pass.
-    pub fn draw<'rp>(&'rp self, render_pass: &mut pipeline::RenderPass<'rp>) -> Result<()>{
-
-        // TODO: move out of basic drawing function.
-        //let mut render_pass = dst.render_pass_clear(encoder, None)?;
-
-        render_pass.set_pipeline(&self.render_pipeline);
-
+    pub fn draw<'rp>(&'rp self, render_pass: &'rp mut pipeline::RenderPassPipeline<'rp>) -> Result<()>{
         self.drawable.draw(render_pass);
 
         Ok(())
+    }
+
+    pub fn get_pipeline(&self) -> &pipeline::RenderPipeline{
+        &self.render_pipeline
     }
 }
 
@@ -86,13 +88,17 @@ impl Stroke{
         }
     }
 
-    pub fn draw<'rp>(&'rp self, render_pass: &mut pipeline::RenderPass<'rp>) -> Result<()>{
+    pub fn draw<'rp>(&'rp self, render_pass: &'rp mut pipeline::RenderPassPipeline<'rp>) -> Result<()>{
 
-        render_pass.set_bind_group(2, &self.uniform.binding_group, &[]);
+        render_pass.set_bind_group_named("stroke", &self.uniform.binding_group, &[]);
         
         self.brushop.draw(render_pass)?;
 
         Ok(())
+    }
+
+    pub fn get_pipeline(&self) -> &pipeline::RenderPipeline{
+        self.brushop.get_pipeline()
     }
 }
 

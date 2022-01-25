@@ -10,7 +10,7 @@ use anyhow::*;
 use std::marker::PhantomData;
 
 pub trait Drawable{
-    fn draw<'rp>(&'rp self, render_pass: &mut pipeline::RenderPass<'rp>);
+    fn draw<'rp>(&'rp self, render_pass: &'rp mut pipeline::RenderPassPipeline<'rp>);
     fn vert_buffer_layout(&self) -> wgpu::VertexBufferLayout<'static>;
 }
 
@@ -41,10 +41,11 @@ impl<V: Vert> Mesh<V>{
 }
 
 impl<V: Vert> Drawable for Mesh<V>{
-    fn draw<'rp>(&'rp self, render_pass: &mut pipeline::RenderPass<'rp>) {
-        render_pass.pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        render_pass.pass.draw_indexed(0..self.num_indices, 0, 0..1);
+    fn draw<'rp>(&'rp self, render_pass: &'rp mut pipeline::RenderPassPipeline<'rp>) {
+
+        render_pass.set_vertex_buffer("model", self.vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        render_pass.render_pass.render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
     }
     fn vert_buffer_layout(&self) -> wgpu::VertexBufferLayout<'static>{
         V::buffer_layout()
@@ -86,10 +87,10 @@ impl<V: Vert> Model<V>{
             model_transforms,
         })
     }
-    pub fn draw<'rp>(&'rp self, queue: &wgpu::Queue, render_pass: &mut pipeline::RenderPass<'rp>) {
+    pub fn draw<'rp>(&'rp self, queue: &wgpu::Queue, render_pass: &'rp mut pipeline::RenderPassPipeline<'rp>) {
         //self.uniform_buffer.update(queue, &self.model_transforms);
 
-        render_pass.set_bind_group(1, &self.uniform_buffer.binding_group, &[]);
+        render_pass.set_bind_group_named("transforms", &self.uniform_buffer.binding_group, &[]);
 
         self.mesh.draw(render_pass);
     }

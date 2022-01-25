@@ -74,27 +74,21 @@ impl Layer{
         };
         let uniform_buffer = buffer::UniformBindGroup::new_with_data(device, &model_transforms);
 
-        /*
-        let bgl = binding::BindGroupLayoutBuilder::new()
-            .push_entry_all(binding::wgsl::uniform())
-            .create(device, None);
-
-        let bg = binding::BindGroupBuilder::new(&bgl)
-            .resource(uniform_buffer.binding_resource())
-            .create(device, None);
-        */
-
         let render_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
             .push_named("src", &texture.bind_group_layout)
             .push_named("transforms", &uniform_buffer.get_bind_group_layout())
             .create(device, None);
+
+        let vertex_state = pipeline::VertexStateLayoutBuilder::new()
+            .push_named("model", drawable.vert_buffer_layout())
+            .build();
 
         let render_pipeline = program::new(
             &device,
             include_str!("shaders/forward_model.wgsl"),
             *format,
             &render_pipeline_layout,
-            &[drawable.vert_buffer_layout()]
+            &vertex_state,
         )?;
 
         let translation = glm::vec3(0.0, 0.0, 0.0);
@@ -109,12 +103,16 @@ impl Layer{
             .push_named("src", &texture.bind_group_layout)
             .create(device, None);
 
+        let copy_pipeline_vertex_state_layout = pipeline::VertexStateLayoutBuilder::new()
+            .push_named("model", copy_mesh.vert_buffer_layout())
+            .build();
+
         let copy_pipeline = program::new(
             &device,
             include_str!("shaders/forward.wgsl"),
             *format,
             &copy_pipeline_layout,
-            &[copy_mesh.vert_buffer_layout()]
+            &copy_pipeline_vertex_state_layout,
         )?;
 
         Ok(Self{
@@ -166,12 +164,16 @@ impl Layer{
             .push_named("transforms", &uniform_buffer.get_bind_group_layout())
             .create(device, None);
 
+        let vertex_state = pipeline::VertexStateLayoutBuilder::new()
+            .push_named("model", drawable.vert_buffer_layout())
+            .build();
+
         let render_pipeline = program::new(
             &device,
             include_str!("shaders/forward_model.wgsl"),
             *format,
             &render_pipeline_layout,
-            &[drawable.vert_buffer_layout()]
+            &vertex_state,
         )?;
 
         let translation = glm::vec3(0.0, 0.0, 0.0);
@@ -186,12 +188,16 @@ impl Layer{
             .push_named("src", &texture.bind_group_layout)
             .create(device, None);
 
+        let copy_pipeline_vertex_state_layout = pipeline::VertexStateLayoutBuilder::new()
+            .push_named("model", copy_mesh.vert_buffer_layout())
+            .build();
+
         let copy_pipeline = program::new(
             &device,
             include_str!("shaders/forward.wgsl"),
             *format,
             &copy_pipeline_layout,
-            &[copy_mesh.vert_buffer_layout()]
+            &copy_pipeline_vertex_state_layout,
         )?;
 
         Ok(Self{
@@ -224,7 +230,7 @@ impl Layer{
         let size_vec_norm = size_vec.normalize();
         let proj: [[f32; 4]; 4] = glm::ortho(-size_vec_norm[0]/2.0, size_vec_norm[0]/2.0, size_vec_norm[1]/2.0, -size_vec_norm[1]/2.0, -1.0, 1.0).into();
         let view: [[f32; 4]; 4] = glm::Mat4::identity().into();
-        
+
         let model = ((translation * scale) * rot).into();
         let model_transforms = ModelTransforms{
             model,
@@ -238,11 +244,13 @@ impl Layer{
             .push_color_attachment(dst.color_attachment_clear())
             .begin(encoder, None);
 
-        render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.texture.bind_group, &[]);
-        render_pass.set_bind_group(1, &self.uniform_buffer.binding_group, &[]);
+        {
+            let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
+            render_pass_pipeline.set_bind_group_named("src", &self.texture.bind_group, &[]);
+            render_pass_pipeline.set_bind_group_named("transforms", &self.uniform_buffer.binding_group, &[]);
 
-        self.drawable.draw(&mut render_pass);
+            self.drawable.draw(&mut render_pass_pipeline);
+        }
 
         Ok(())
     }
@@ -262,22 +270,22 @@ impl Layer{
                     .push_color_attachment(self.tex_tmp.view.color_attachment_clear())
                     .begin(encoder, None);
 
-                render_pass.set_bind_group(0, prev, &[]);
-                render_pass.set_bind_group(1, &self.texture.bind_group, &[]);
+                let mut render_pass_pipeline = render_pass.set_pipeline(stroke.get_pipeline());
 
-                stroke.draw(&mut render_pass)?;
+                render_pass_pipeline.set_bind_group_named("background", prev, &[]);
+                render_pass_pipeline.set_bind_group_named("self", &self.texture.bind_group, &[]);
+
+                stroke.draw(&mut render_pass_pipeline)?;
+
             }
 
-            {
-                let mut render_pass = pipeline::RenderPassBuilder::new()
-                    .push_color_attachment(self.texture.view.color_attachment_clear())
-                    .begin(encoder, None);
+            let mut render_pass = pipeline::RenderPassBuilder::new()
+                .push_color_attachment(self.texture.view.color_attachment_clear())
+                .begin(encoder, None)
+                .set_pipeline(&self.copy_pipeline)
+                .set_bind_group_named("src", &self.tex_tmp.bind_group, &[]);
 
-                render_pass.set_pipeline(&self.copy_pipeline);
-                render_pass.set_bind_group(0, &self.tex_tmp.bind_group, &[]);
-
-                self.copy_mesh.draw(&mut render_pass);
-            }
+            self.copy_mesh.draw(&mut render_pass);
         }
 
         self.strokes.clear();

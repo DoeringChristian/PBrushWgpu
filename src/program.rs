@@ -3,7 +3,7 @@ use crate::{binding, pipeline};
 
 
 use anyhow::*;
-pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, pipeline_layout: &pipeline::PipelineLayout, vertex_buffer_layouts: &[wgpu::VertexBufferLayout]) -> Result<pipeline::RenderPipeline>{
+pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, pipeline_layout: &pipeline::PipelineLayout, vertex_stage_layout: &pipeline::VertexStateLayout) -> Result<pipeline::RenderPipeline>{
 
     let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
         label: Some("shader"),
@@ -23,8 +23,8 @@ pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, pipeli
         layout: Some(&pipeline_layout.layout),
         vertex: wgpu::VertexState{
             module: &shader,
-            entry_point: "vs_main",
-            buffers: vertex_buffer_layouts,
+            entry_point: vertex_stage_layout.entry_point,
+            buffers: &vertex_stage_layout.vertex_buffer_layouts,
         },
         fragment: Some(wgpu::FragmentState{
             module: &shader,
@@ -60,7 +60,8 @@ pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, pipeli
     Ok(
         pipeline::RenderPipeline{
             pipeline: render_pipeline,
-            sets: pipeline_layout.sets.clone(),
+            bind_group_names: pipeline_layout.names.clone(),
+            vertex_buffer_names: vertex_stage_layout.vertex_buffer_names.clone(),
         }
     )
 }
