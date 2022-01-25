@@ -141,16 +141,15 @@ impl<'l> PipelineLayoutBuilder<'l>{
 /// used to reference that Pipeline so one is able to set the bind groups and vertex buffers by
 /// name.
 /// 
+/// The 'rrp lifetime referrs to the render_pass pointer.
 ///
-
-
-pub struct RenderPassPipeline<'rp, 'rppl>{
-    pub render_pass: &'rppl mut RenderPass<'rp>,
+pub struct RenderPassPipeline<'rp, 'rpp>{
+    pub render_pass: &'rpp mut RenderPass<'rp>,
     pub pipeline: &'rp RenderPipeline,
 }
 
-impl<'rp, 'rppl> RenderPassPipeline<'rp, 'rppl>{
-    pub fn set_bind_group_named(&mut self, name: &str, bind_group: &'rp wgpu::BindGroup, offsets: &'rp [wgpu::DynamicOffset]){
+impl<'rp, 'rpp> RenderPassPipeline<'rp, 'rpp>{
+    pub fn set_bind_group(&mut self, name: &str, bind_group: &'rp wgpu::BindGroup, offsets: &'rp [wgpu::DynamicOffset]){
         self.render_pass.render_pass.set_bind_group(
             self.pipeline.bind_group_names[name] as u32, 
             bind_group, offsets

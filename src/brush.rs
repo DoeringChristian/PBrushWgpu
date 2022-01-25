@@ -90,7 +90,7 @@ impl Stroke{
 
     pub fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>) -> Result<()>{
 
-        render_pass.set_bind_group_named("stroke", &self.uniform.binding_group, &[]);
+        render_pass.set_bind_group("stroke", &self.uniform.binding_group, &[]);
         
         self.brushop.draw(render_pass)?;
 

@@ -90,7 +90,7 @@ impl<V: Vert> Model<V>{
     pub fn draw<'rp>(&'rp self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>) {
         //self.uniform_buffer.update(queue, &self.model_transforms);
 
-        render_pass.set_bind_group_named("transforms", &self.uniform_buffer.binding_group, &[]);
+        render_pass.set_bind_group("transforms", &self.uniform_buffer.binding_group, &[]);
 
         self.mesh.draw(render_pass);
     }

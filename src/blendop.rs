@@ -57,8 +57,8 @@ impl BlendOp{
                 .begin(encoder, None);
 
             let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
-            render_pass_pipeline.set_bind_group_named("src", src0, &[]);
-            render_pass_pipeline.set_bind_group_named("dst", src1, &[]);
+            render_pass_pipeline.set_bind_group("src", src0, &[]);
+            render_pass_pipeline.set_bind_group("dst", src1, &[]);
 
             self.drawable.draw(&mut render_pass_pipeline);
         }
