@@ -32,20 +32,10 @@ pub trait UpdatedDrawable<D>: Drawable{
 ///
 /// A PipelineDrawable is Anything that can be drawn but with its own pipeline.
 ///
-pub trait PipelineDrawable{
-    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPass<'rp>);
-}
-
-pub trait UpdatedPipelineDrawable<D>: PipelineDrawable{
-    fn update(&mut self, queue: &wgpu::Queue, data: &D);
-    fn update_draw<'rp>(&'rp mut self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'rp>, data: &D){
-        self.update(queue, data);
-        self.draw(render_pass)
-    }
-}
-
-pub trait DataPipelineDrawable<D>{
-    fn draw_data<'rp>(&'rp self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'rp>, data: &'rp D);
+/// It has to get data from somewhere for example textures to draw to.
+///
+pub trait PipelineDrawable<'pd, D>{
+    fn draw_data(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: D);
 }
 
 pub struct Mesh<V: Vert>{

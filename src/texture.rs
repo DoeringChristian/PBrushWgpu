@@ -246,6 +246,12 @@ impl Texture{
     }
 }
 
+impl GetBindGroup for Texture{
+    fn get_bind_group<'l>(&'l self) -> &'l wgpu::BindGroup {
+        &self.bind_group
+    }
+}
+
 impl RenderTarget for Texture{
     fn render_pass_clear<'a>(&'a self, encoder: &'a mut wgpu::CommandEncoder, label: Option<&'a str>) -> Result<wgpu::RenderPass<'a>> {
         self.view.render_pass_clear(encoder, label)

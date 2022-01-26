@@ -67,14 +67,8 @@ impl BlendOp{
     }
 }
 
-impl mesh::PipelineDrawable for BlendOp{
-    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPass<'rp>) {
-        //let render_pass_pipeline = render_pass.set_pipeline_ref(&self.render_pipeline);
-    }
-}
-
-impl mesh::DataPipelineDrawable<(&wgpu::BindGroup, &wgpu::BindGroup)> for BlendOp{
-    fn draw_data<'rp>(&'rp self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'rp>, data: &'rp(&wgpu::BindGroup, &wgpu::BindGroup)) {
+impl<'pd> mesh::PipelineDrawable<'pd, (&'pd wgpu::BindGroup, &'pd wgpu::BindGroup)> for BlendOp{
+    fn draw_data(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: (&'pd wgpu::BindGroup, &'pd wgpu::BindGroup)) {
         let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
 
         render_pass_pipeline.set_bind_group("src", data.0, &[]);

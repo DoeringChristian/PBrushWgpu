@@ -8,6 +8,7 @@ use crate::vert;
 use crate::program;
 use crate::texture;
 use crate::pipeline;
+use crate::binding::GetBindGroup;
 use crate::render_target::RenderTarget;
 use crate::binding::ToBindGroupLayout;
 
@@ -15,6 +16,12 @@ use crate::binding::ToBindGroupLayout;
 pub struct BrushOp{
     render_pipeline: pipeline::RenderPipeline,
     drawable: Arc<dyn mesh::Drawable>,
+}
+
+pub struct BrushOpData<'bg>{
+    background: &'bg texture::Texture,
+    this: &'bg texture::Texture,
+    stroke: &'bg buffer::UniformBindGroup<StrokeUniform>,
 }
 
 impl BrushOp{
@@ -64,11 +71,28 @@ impl BrushOp{
     }
 }
 
+impl<'pd> mesh::PipelineDrawable<'pd, BrushOpData<'pd>> for BrushOp{
+    fn draw_data(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: BrushOpData<'pd>){
+        let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
+
+        render_pass_pipeline.set_bind_group("background", data.background.get_bind_group(), &[]);
+        render_pass_pipeline.set_bind_group("self", data.this.get_bind_group(), &[]);
+        render_pass_pipeline.set_bind_group("stroke", data.stroke.get_bind_group(), &[]);
+        
+        self.drawable.draw(&mut render_pass_pipeline);
+    }
+}
+
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct StrokeUniform{
     pub pos0: [f32; 2],
     pub pos1: [f32; 2],
+}
+
+pub struct StrokeData<'bg>{
+    pub background: &'bg texture::Texture,
+    pub this: &'bg texture::Texture,
 }
 
 pub struct Stroke{
@@ -99,6 +123,16 @@ impl Stroke{
 
     pub fn get_pipeline(&self) -> &pipeline::RenderPipeline{
         self.brushop.get_pipeline()
+    }
+}
+
+impl<'pd> mesh::PipelineDrawable<'pd, StrokeData<'pd>> for Stroke{
+    fn draw_data(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: StrokeData<'pd>) {
+        self.brushop.draw_data(queue, render_pass, BrushOpData{
+            background: data.background,
+            this: data.this,
+            stroke: &self.uniform,
+        });
     }
 }
 
