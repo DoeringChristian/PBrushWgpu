@@ -30,11 +30,11 @@ pub trait UpdatedDrawable<D>: Drawable{
 }
 
 ///
-/// A PipelineDrawable is Anything that can be drawn but with its own pipeline.
+/// A DataDrawable is Anything that can be drawn without knowing the pipeline to use own pipeline.
 ///
 /// It has to get data from somewhere for example textures to draw to.
 ///
-pub trait PipelineDrawable<'pd, D>{
+pub trait DataDrawable<'pd, D>{
     fn draw_data(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: D);
 }
 

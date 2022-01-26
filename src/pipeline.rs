@@ -93,6 +93,10 @@ impl <'vsb> VertexStateLayoutBuilder<'vsb>{
 }
 
 
+pub trait RenderData{
+    fn create_bind_group_layout(device: &wgpu::Device) -> Vec<binding::BindGroupLayoutWithDesc>;
+    fn get_bind_groups(&self) -> Vec<&wgpu::BindGroup>;
+}
 
 
 pub struct RenderPipeline{
@@ -173,6 +177,16 @@ impl<'rp, 'rpr> RenderPassPipeline<'rp, 'rpr>{
         );
     }
 
+    pub fn set_bind_groups(&mut self, bind_groups: &[&'rp wgpu::BindGroup]){
+        for (i, bind_group) in bind_groups.iter().enumerate(){
+            self.render_pass.render_pass.set_bind_group(
+                i as u32,
+                bind_group,
+                &[],
+            )
+        }
+    }
+
     pub fn set_vertex_buffer(&mut self, name: &str, buffer_slice: wgpu::BufferSlice<'rp>){
         self.render_pass.render_pass.set_vertex_buffer(
             self.pipeline.vertex_buffer_names[name] as u32, 
@@ -183,6 +197,7 @@ impl<'rp, 'rpr> RenderPassPipeline<'rp, 'rpr>{
     pub fn set_index_buffer(&mut self, buffer_slice: wgpu::BufferSlice<'rp>, format: wgpu::IndexFormat){
         self.render_pass.render_pass.set_index_buffer(buffer_slice, format);
     }
+
 
     pub fn draw(&mut self, vertices: Range<u32>, instances: Range<u32>){
         self.render_pass.render_pass.draw(vertices, instances);

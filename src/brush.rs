@@ -19,9 +19,12 @@ pub struct BrushOp{
 }
 
 pub struct BrushOpData<'bg>{
-    background: &'bg texture::Texture,
-    this: &'bg texture::Texture,
+    stroke_data: StrokeData<'bg>,
     stroke: &'bg buffer::UniformBindGroup<StrokeUniform>,
+}
+
+/// Add an iter for layouts and bindgroups
+impl<'bg> BrushOpData<'bg>{
 }
 
 impl BrushOp{
@@ -71,12 +74,12 @@ impl BrushOp{
     }
 }
 
-impl<'pd> mesh::PipelineDrawable<'pd, BrushOpData<'pd>> for BrushOp{
+impl<'pd> mesh::DataDrawable<'pd, BrushOpData<'pd>> for BrushOp{
     fn draw_data(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: BrushOpData<'pd>){
         let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
 
-        render_pass_pipeline.set_bind_group("background", data.background.get_bind_group(), &[]);
-        render_pass_pipeline.set_bind_group("self", data.this.get_bind_group(), &[]);
+        render_pass_pipeline.set_bind_group("background", data.stroke_data.background.get_bind_group(), &[]);
+        render_pass_pipeline.set_bind_group("self", data.stroke_data.tex_self.get_bind_group(), &[]);
         render_pass_pipeline.set_bind_group("stroke", data.stroke.get_bind_group(), &[]);
         
         self.drawable.draw(&mut render_pass_pipeline);
@@ -92,7 +95,7 @@ pub struct StrokeUniform{
 
 pub struct StrokeData<'bg>{
     pub background: &'bg texture::Texture,
-    pub this: &'bg texture::Texture,
+    pub tex_self: &'bg texture::Texture,
 }
 
 pub struct Stroke{
@@ -126,11 +129,10 @@ impl Stroke{
     }
 }
 
-impl<'pd> mesh::PipelineDrawable<'pd, StrokeData<'pd>> for Stroke{
+impl<'pd> mesh::DataDrawable<'pd, StrokeData<'pd>> for Stroke{
     fn draw_data(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: StrokeData<'pd>) {
         self.brushop.draw_data(queue, render_pass, BrushOpData{
-            background: data.background,
-            this: data.this,
+            stroke_data: data,
             stroke: &self.uniform,
         });
     }
