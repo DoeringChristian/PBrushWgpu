@@ -14,6 +14,10 @@ pub trait Drawable{
     fn vert_buffer_layout(&self) -> wgpu::VertexBufferLayout<'static>;
 }
 
+pub trait UpdatedDrawable<D>: Drawable{
+    fn update(&mut self, queue: &wgpu::Queue, data: &D);
+}
+
 pub struct Mesh<V: Vert>{
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
@@ -62,7 +66,6 @@ pub struct ModelTransforms{
 
 pub struct Model<V: Vert>{
     mesh: Mesh<V>,
-    model_transforms: ModelTransforms,
     uniform_buffer: UniformBindGroup<ModelTransforms>,
 }
 
@@ -84,18 +87,25 @@ impl<V: Vert> Model<V>{
         Ok(Self{
             mesh,
             uniform_buffer,
-            model_transforms,
         })
     }
-    pub fn draw<'rp>(&'rp self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp>) {
-        //self.uniform_buffer.update(queue, &self.model_transforms);
+}
 
+impl<V: Vert> Drawable for Model<V>{
+    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp>) {
         render_pass.set_bind_group("transforms", &self.uniform_buffer.binding_group, &[]);
 
         self.mesh.draw(render_pass);
     }
-    pub fn vert_buffer_layout(&self) -> wgpu::VertexBufferLayout<'static>{
+
+    fn vert_buffer_layout(&self) -> wgpu::VertexBufferLayout<'static> {
         V::buffer_layout()
+    }
+}
+
+impl<V: Vert> UpdatedDrawable<ModelTransforms> for Model<V>{
+    fn update(&mut self, queue: &wgpu::Queue, data: &ModelTransforms) {
+        self.uniform_buffer.update(queue, &data);
     }
 }
 

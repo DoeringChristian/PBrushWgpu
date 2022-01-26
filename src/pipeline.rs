@@ -10,6 +10,29 @@ use std::borrow::Cow;
 use anyhow::*;
 use core::ops::Range;
 
+pub struct FragmentStateLayout<'fs>{
+    pub color_target_states: Vec<wgpu::ColorTargetState>,
+    pub entry_point: &'fs str,
+}
+
+pub struct FragmentStateLayoutBuilder<'fsb>{
+    pub color_target_states: Vec<wgpu::ColorTargetState>,
+    entry_point: &'fsb str,
+}
+
+impl <'fsb> FragmentStateLayoutBuilder<'fsb>{
+    pub fn new() -> Self{
+        Self{
+            color_target_states: Vec::new(),
+            entry_point: "main",
+        }
+    }
+    
+    pub fn set_entry_point(mut self, entry_point: &'fsb str) -> Self{
+        self.entry_point = entry_point;
+        self
+    }
+}
 
 ///
 /// Layout of the VertexState of a Pipeline.
@@ -207,11 +230,11 @@ impl<'rp> RenderPass<'rp>{
     }
 
     /*
-    #[inline]
-    pub fn set_bind_group(&mut self, index: u32, bind_group: &'rp wgpu::BindGroup, offsets: &'rp [wgpu::DynamicOffset]){
-        self.render_pass.set_bind_group(index, bind_group, offsets);
-    }
-    */
+       #[inline]
+       pub fn set_bind_group(&mut self, index: u32, bind_group: &'rp wgpu::BindGroup, offsets: &'rp [wgpu::DynamicOffset]){
+       self.render_pass.set_bind_group(index, bind_group, offsets);
+       }
+       */
 }
 
 pub struct RenderPassBuilder<'rp>{
@@ -252,6 +275,7 @@ fn shader_load(device: &wgpu::Device, path: &str, label: Option<&str>) -> Result
 
 
     let extension = Path::new(path).extension().ok_or(anyhow!("No extension"))?;
+
 
     let source = match extension.to_str().ok_or(anyhow!("string conversion"))?{
         //"glsl" => wgpu::ShaderSource::Glsl(src),

@@ -25,10 +25,10 @@ struct LayerUniform{
 }
 
 pub struct Layer{
-    drawable: Box<dyn Drawable>,
-    texture: texture::Texture,
+    drawable: Box<dyn UpdatedDrawable<ModelTransforms>>,
+    tex_src: texture::Texture,
     // a temporary texture for painting to and from the layer.
-    tex_tmp: texture::Texture,
+    tex_target: texture::Texture,
     render_pipeline: pipeline::RenderPipeline,
 
     translation: glm::Vec3,
@@ -39,8 +39,6 @@ pub struct Layer{
     blendop: Arc<BlendOp>,
 
     strokes: VecDeque<brush::Stroke>,
-    copy_mesh: mesh::Mesh<Vert2>,
-    copy_pipeline: pipeline::RenderPipeline,
 }
 
 impl Layer{
@@ -62,7 +60,7 @@ impl Layer{
             *format
         )?;
 
-        let drawable = Box::new(Mesh::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?);
+        let drawable = Box::new(Model::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?);
 
         let model = glm::Mat4::identity();
         let view = glm::Mat4::identity();
@@ -97,26 +95,8 @@ impl Layer{
 
         let strokes: VecDeque<brush::Stroke> = VecDeque::new();
 
-        let copy_mesh = Mesh::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?;
-
-        let copy_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
-            .push_named("src", &texture.bind_group_layout)
-            .create(device, None);
-
-        let copy_pipeline_vertex_state_layout = pipeline::VertexStateLayoutBuilder::new()
-            .push_named("model", copy_mesh.vert_buffer_layout())
-            .build();
-
-        let copy_pipeline = program::new(
-            &device,
-            include_str!("shaders/forward.wgsl"),
-            *format,
-            &copy_pipeline_layout,
-            &copy_pipeline_vertex_state_layout,
-        )?;
-
         Ok(Self{
-            texture,
+            tex_src: texture,
             render_pipeline,
             drawable,
             uniform_buffer,
@@ -124,10 +104,8 @@ impl Layer{
             translation,
             scale,
             rotation,
-            tex_tmp,
+            tex_target: tex_tmp,
             strokes,
-            copy_mesh,
-            copy_pipeline,
         })
     }
 
@@ -147,7 +125,7 @@ impl Layer{
             *format
         )?;
 
-        let drawable = Box::new(Mesh::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?);
+        let drawable = Box::new(Model::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?);
 
         let model = glm::Mat4::identity();
         let view = glm::Mat4::identity();
@@ -182,26 +160,8 @@ impl Layer{
 
         let strokes: VecDeque<brush::Stroke> = VecDeque::new();
 
-        let copy_mesh = Mesh::<Vert2>::new(device, &Vert2::QUAD_VERTS, &Vert2::QUAD_IDXS)?;
-
-        let copy_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
-            .push_named("src", &texture.bind_group_layout)
-            .create(device, None);
-
-        let copy_pipeline_vertex_state_layout = pipeline::VertexStateLayoutBuilder::new()
-            .push_named("model", copy_mesh.vert_buffer_layout())
-            .build();
-
-        let copy_pipeline = program::new(
-            &device,
-            include_str!("shaders/forward.wgsl"),
-            *format,
-            &copy_pipeline_layout,
-            &copy_pipeline_vertex_state_layout,
-        )?;
-
         Ok(Self{
-            texture,
+            tex_src: texture,
             render_pipeline,
             drawable,
             uniform_buffer,
@@ -209,10 +169,8 @@ impl Layer{
             translation,
             scale,
             rotation,
-            tex_tmp,
+            tex_target: tex_tmp,
             strokes,
-            copy_mesh,
-            copy_pipeline,
         })
     }
 
@@ -245,8 +203,8 @@ impl Layer{
             .begin(encoder, None)
             .set_pipeline(&self.render_pipeline);
 
-        render_pass.set_bind_group("src", &self.texture.bind_group, &[]);
-        render_pass.set_bind_group("transforms", &self.uniform_buffer.binding_group, &[]);
+        render_pass.set_bind_group("src", &self.tex_src.bind_group, &[]);
+        self.drawable.update(queue, &model_transforms);
 
         self.drawable.draw(&mut render_pass);
 
@@ -265,26 +223,37 @@ impl Layer{
         for stroke in &self.strokes{
             {
                 let mut render_pass = pipeline::RenderPassBuilder::new()
-                    .push_color_attachment(self.tex_tmp.view.color_attachment_clear())
+                    .push_color_attachment(self.tex_target.view.color_attachment_clear())
                     .begin(encoder, None)
                     .set_pipeline(stroke.get_pipeline());
 
                 render_pass.set_bind_group("background", prev, &[]);
-                render_pass.set_bind_group("self", &self.texture.bind_group, &[]);
+                render_pass.set_bind_group("self", &self.tex_src.bind_group, &[]);
 
                 stroke.draw(&mut render_pass)?;
 
             }
 
             {
-                let mut render_pass = pipeline::RenderPassBuilder::new()
-                    .push_color_attachment(self.texture.view.color_attachment_clear())
-                    .begin(encoder, None)
-                    .set_pipeline(&self.copy_pipeline);
-
-                render_pass.set_bind_group("src", &self.tex_tmp.bind_group, &[]);
-
-                self.copy_mesh.draw(&mut render_pass);
+                encoder.copy_texture_to_texture(
+                    wgpu::ImageCopyTexture{
+                        texture: &self.tex_target.texture,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    wgpu::ImageCopyTexture{
+                        texture: &self.tex_src.texture,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                        aspect: wgpu::TextureAspect::All,
+                    },
+                    wgpu::Extent3d{
+                        width: self.tex_src.size[0],
+                        height: self.tex_src.size[1],
+                        depth_or_array_layers: 1,
+                    }
+                );
             }
         }
 

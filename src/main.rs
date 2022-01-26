@@ -32,6 +32,7 @@ mod blendop;
 mod canvas;
 mod algebra;
 mod brush;
+mod surface;
 
 use framework::*;
 use binding::*;
