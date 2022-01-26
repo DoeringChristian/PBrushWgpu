@@ -222,6 +222,28 @@ impl Texture{
         let img = image::load_from_memory(bytes)?;
         Self::from_image(device, queue, &img, label, format)
     }
+
+    pub fn copy_all_to(&self, dst: &mut Texture, encoder: &mut wgpu::CommandEncoder){
+        encoder.copy_texture_to_texture(
+            wgpu::ImageCopyTexture{
+                texture: &self.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All
+            },
+            wgpu::ImageCopyTexture{
+                texture: &dst.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            wgpu::Extent3d{
+                width: self.size[0],
+                height: self.size[1],
+                depth_or_array_layers: 1,
+            }
+        );
+    }
 }
 
 impl RenderTarget for Texture{

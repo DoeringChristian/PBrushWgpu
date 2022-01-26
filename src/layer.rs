@@ -234,27 +234,7 @@ impl Layer{
 
             }
 
-            {
-                encoder.copy_texture_to_texture(
-                    wgpu::ImageCopyTexture{
-                        texture: &self.tex_target.texture,
-                        mip_level: 0,
-                        origin: wgpu::Origin3d::ZERO,
-                        aspect: wgpu::TextureAspect::All,
-                    },
-                    wgpu::ImageCopyTexture{
-                        texture: &self.tex_src.texture,
-                        mip_level: 0,
-                        origin: wgpu::Origin3d::ZERO,
-                        aspect: wgpu::TextureAspect::All,
-                    },
-                    wgpu::Extent3d{
-                        width: self.tex_src.size[0],
-                        height: self.tex_src.size[1],
-                        depth_or_array_layers: 1,
-                    }
-                );
-            }
+            self.tex_target.copy_all_to(&mut self.tex_src, encoder);
         }
 
         self.strokes.clear();
