@@ -200,13 +200,14 @@ impl Layer{
 
         let mut render_pass = pipeline::RenderPassBuilder::new()
             .push_color_attachment(dst.color_attachment_clear())
-            .begin(encoder, None)
-            .set_pipeline(&self.render_pipeline);
+            .begin(encoder, None);
+        let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
 
-        render_pass.set_bind_group("src", &self.tex_src.bind_group, &[]);
+        render_pass_pipeline.set_bind_group("src", &self.tex_src.bind_group, &[]);
+
         self.drawable.update(queue, &model_transforms);
 
-        self.drawable.draw(&mut render_pass);
+        self.drawable.draw(&mut render_pass_pipeline);
 
         Ok(())
     }
@@ -224,13 +225,13 @@ impl Layer{
             {
                 let mut render_pass = pipeline::RenderPassBuilder::new()
                     .push_color_attachment(self.tex_target.view.color_attachment_clear())
-                    .begin(encoder, None)
-                    .set_pipeline(stroke.get_pipeline());
+                    .begin(encoder, None);
+                let mut render_pass_pipeline = render_pass.set_pipeline(stroke.get_pipeline());
 
-                render_pass.set_bind_group("background", prev, &[]);
-                render_pass.set_bind_group("self", &self.tex_src.bind_group, &[]);
+                render_pass_pipeline.set_bind_group("background", prev, &[]);
+                render_pass_pipeline.set_bind_group("self", &self.tex_src.bind_group, &[]);
 
-                stroke.draw(&mut render_pass)?;
+                stroke.draw(&mut render_pass_pipeline)?;
 
             }
 

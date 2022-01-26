@@ -1,6 +1,7 @@
 use std::collections::HashMap;
+use std::ops::Deref;
 use std::path::Path;
-use std::fs;
+use std::{fs, ops};
 use std::fs::File;
 use std::io::Read;
 use std::str;
@@ -159,21 +160,12 @@ impl<'l> PipelineLayoutBuilder<'l>{
     }
 }
 
-///
-/// A Render Pass with a Pipeline.
-///
-/// used to reference that Pipeline so one is able to set the bind groups and vertex buffers by
-/// name.
-/// 
-/// The 'rrp lifetime referrs to the render_pass pointer.
-///
-/// Not quite sure about lifetime inheritance.
-pub struct RenderPassPipeline<'rp>{
-    pub render_pass: RenderPass<'rp>,
+pub struct RenderPassPipeline<'rp, 'rpr>{
+    pub render_pass: &'rpr mut RenderPass<'rp>,
     pub pipeline: &'rp RenderPipeline,
 }
 
-impl<'rp> RenderPassPipeline<'rp>{
+impl<'rp, 'rpr> RenderPassPipeline<'rp, 'rpr>{
     pub fn set_bind_group(&mut self, name: &str, bind_group: &'rp wgpu::BindGroup, offsets: &'rp [wgpu::DynamicOffset]){
         self.render_pass.render_pass.set_bind_group(
             self.pipeline.bind_group_names[name] as u32, 
@@ -200,28 +192,29 @@ impl<'rp> RenderPassPipeline<'rp>{
         self.render_pass.render_pass.draw_indexed(indices, base_vertex, instances);
     }
 
-    pub fn set_pipeline(mut self, pipeline: &'rp RenderPipeline) -> Self{
+    pub fn set_pipeline(&'rpr mut self, pipeline: &'rp RenderPipeline) -> Self{
         self.render_pass.render_pass.set_pipeline(&pipeline.pipeline);
         Self{
             render_pass: self.render_pass,
             pipeline,
         }
     }
-
-    /// Does not actually reset pipeline from wgpu render_pass
-    pub fn unset_pipeline(self) -> RenderPass<'rp>{
-        RenderPass{
-            render_pass: self.render_pass.render_pass,
-        }
-    }
 }
+
+///
+/// A Render Pass with a Pipeline.
+///
+/// used to reference that Pipeline so one is able to set the bind groups and vertex buffers by
+/// name.
+///
+/// Not quite sure about lifetime inheritance.
 
 pub struct RenderPass<'rp>{
     pub render_pass: wgpu::RenderPass<'rp>,
 }
 
 impl<'rp> RenderPass<'rp>{
-    pub fn set_pipeline(mut self, pipeline: &'rp RenderPipeline) -> RenderPassPipeline<'rp>{
+    pub fn set_pipeline(&mut self, pipeline: &'rp RenderPipeline) -> RenderPassPipeline<'rp, '_>{
         self.render_pass.set_pipeline(&pipeline.pipeline);
         RenderPassPipeline{
             render_pass: self,

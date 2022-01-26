@@ -54,18 +54,35 @@ impl BlendOp{
         {
             let mut render_pass = pipeline::RenderPassBuilder::new()
                 .push_color_attachment(dst.color_attachment_clear())
-                .begin(encoder, None)
-                .set_pipeline(&self.render_pipeline);
+                .begin(encoder, None);
+            let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
 
-            render_pass.set_bind_group("src", src0, &[]);
-            render_pass.set_bind_group("dst", src1, &[]);
+            render_pass_pipeline.set_bind_group("src", src0, &[]);
+            render_pass_pipeline.set_bind_group("dst", src1, &[]);
 
-            self.drawable.draw(&mut render_pass);
+            self.drawable.draw(&mut render_pass_pipeline);
         }
 
         Ok(())
     }
 }
+
+impl mesh::PipelineDrawable for BlendOp{
+    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPass<'rp>) {
+        //let render_pass_pipeline = render_pass.set_pipeline_ref(&self.render_pipeline);
+    }
+}
+
+impl mesh::DataPipelineDrawable<(&wgpu::BindGroup, &wgpu::BindGroup)> for BlendOp{
+    fn draw_data<'rp>(&'rp self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'rp>, data: &'rp(&wgpu::BindGroup, &wgpu::BindGroup)) {
+        let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
+
+        render_pass_pipeline.set_bind_group("src", data.0, &[]);
+        render_pass_pipeline.set_bind_group("dst", data.1, &[]);
+
+    }
+}
+
 
 pub struct BlendOpManager{
     ops: HashMap<String, Arc<BlendOp>>,
@@ -87,3 +104,4 @@ impl BlendOpManager{
         Ok(self.ops.get(key).ok_or(anyhow!("No BlendOp found for this name"))?.clone())
     }
 }
+

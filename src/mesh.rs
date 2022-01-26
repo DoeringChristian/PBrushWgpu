@@ -2,6 +2,7 @@ use crate::binding;
 use crate::pipeline;
 use crate::vert::*;
 use crate::buffer::*;
+use crate::binding::GetBindGroup;
 use bytemuck;
 use cgmath::*;
 #[allow(unused)]
@@ -9,13 +10,42 @@ use wgpu::util::DeviceExt;
 use anyhow::*;
 use std::marker::PhantomData;
 
+///
+/// Drawables can be drawn using a RenderPassPipeline.
+///
+/// The Function vert_buffer_layout can be used to extract the vertex buffer layout when creating a
+/// RenderPipeline.
+///
 pub trait Drawable{
-    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp>);
+    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>);
     fn vert_buffer_layout(&self) -> wgpu::VertexBufferLayout<'static>;
 }
 
 pub trait UpdatedDrawable<D>: Drawable{
     fn update(&mut self, queue: &wgpu::Queue, data: &D);
+    fn update_draw<'rp>(&'rp mut self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>, data: &D){
+        self.update(queue, data);
+        self.draw(render_pass)
+    }
+}
+
+///
+/// A PipelineDrawable is Anything that can be drawn but with its own pipeline.
+///
+pub trait PipelineDrawable{
+    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPass<'rp>);
+}
+
+pub trait UpdatedPipelineDrawable<D>: PipelineDrawable{
+    fn update(&mut self, queue: &wgpu::Queue, data: &D);
+    fn update_draw<'rp>(&'rp mut self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'rp>, data: &D){
+        self.update(queue, data);
+        self.draw(render_pass)
+    }
+}
+
+pub trait DataPipelineDrawable<D>{
+    fn draw_data<'rp>(&'rp self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'rp>, data: &'rp D);
 }
 
 pub struct Mesh<V: Vert>{
@@ -26,7 +56,6 @@ pub struct Mesh<V: Vert>{
 }
 
 impl<V: Vert> Mesh<V>{
-
     pub fn new(device: &wgpu::Device, verts: &[V], idxs: &[u32]) -> Result<Self>{
 
         let vertex_buffer = verts.create_vert_buffer(device)?;
@@ -45,7 +74,7 @@ impl<V: Vert> Mesh<V>{
 }
 
 impl<V: Vert> Drawable for Mesh<V>{
-    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp>) {
+    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>) {
 
         render_pass.set_vertex_buffer("model", self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
@@ -92,8 +121,8 @@ impl<V: Vert> Model<V>{
 }
 
 impl<V: Vert> Drawable for Model<V>{
-    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp>) {
-        render_pass.set_bind_group("transforms", &self.uniform_buffer.binding_group, &[]);
+    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>) {
+        render_pass.set_bind_group("transforms", &self.uniform_buffer.get_bind_group(), &[]);
 
         self.mesh.draw(render_pass);
     }

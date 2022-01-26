@@ -53,7 +53,7 @@ impl BrushOp{
     }
 
     // TODO: change bind_groups to render_pass.
-    pub fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp>) -> Result<()>{
+    pub fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>) -> Result<()>{
         self.drawable.draw(render_pass);
 
         Ok(())
@@ -88,7 +88,7 @@ impl Stroke{
         }
     }
 
-    pub fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp>) -> Result<()>{
+    pub fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>) -> Result<()>{
 
         render_pass.set_bind_group("stroke", &self.uniform.binding_group, &[]);
         
