@@ -64,6 +64,7 @@ impl State for WinState{
                 "assets/test1.jpg"
         ).unwrap());
 
+        /*
         canvas.push_layer(layer::Layer::load(
                 &fstate.device,
                 &fstate.queue,
@@ -71,9 +72,10 @@ impl State for WinState{
                 blendops.arc_to("Add").unwrap(),
                 "assets/test2.jpg"
         ).unwrap());
+        */
 
-        canvas.layers[0].borrow_mut().scale = glm::vec3(800.0, 800.0, 1.0);
-        canvas.layers[1].borrow_mut().scale = glm::vec3(800.0, 800.0, 1.0);
+        canvas.layers[0].borrow_mut().scale = glm::vec3(300.0, 200.0, 1.0);
+        //canvas.layers[1].borrow_mut().scale = glm::vec3(800.0, 800.0, 1.0);
 
         canvas.layers[0].borrow_mut().queue_stroke(brush::Stroke::new(
                 &fstate.device,

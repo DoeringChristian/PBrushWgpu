@@ -32,26 +32,6 @@ impl <'fsb> FragmentStateBuilder<'fsb>{
             entry_point: "fs_main",
         }
     }
-
-    // TODO: create shader in build
-    /*
-    pub fn new_from_src_glsl<'s>(device: &wgpu::Device, src: &'s str) -> Self{
-        let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
-            label: None,
-            source: wgpu::ShaderSource::Glsl{
-                shader: Cow::from(src),
-                stage: naga::ShaderStage::Fragment,
-                defines: naga::FastHashMap::default()
-            }
-        });
-
-        Self{
-            color_target_states: Vec::new(),
-            entry_point: "fs_main",
-            shader: &shader,
-        }
-    }
-    */
     
     pub fn set_entry_point(mut self, entry_point: &'fsb str) -> Self{
         self.entry_point = entry_point;
@@ -100,28 +80,6 @@ impl <'vsb> VertexStateBuilder<'vsb>{
             vertex_shader,
         }
     }
-
-    // TODO: create shader in build.
-    /*
-    pub fn new_from_src_glsl<'s>(device: &wgpu::Device, src: &'s str) -> Self{
-        let vertex_shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
-            label: None,
-            source: wgpu::ShaderSource::Glsl{
-                shader: Cow::from(src),
-                stage: naga::ShaderStage::Vertex,
-                defines: naga::FastHashMap::default()
-            }
-        });
-
-        Self{
-            vertex_buffer_layouts: Vec::new(),
-            vertex_buffer_names: HashMap::new(),
-            entry_point: "vs_main",
-            index: 0,
-            vertex_shader: &vertex_shader,
-        }
-    }
-    */
 
     pub fn set_entry_point(mut self, entry_point: &'vsb str) -> Self{
         self.entry_point = entry_point;

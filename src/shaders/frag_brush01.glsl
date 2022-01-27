@@ -2,14 +2,9 @@
 
 layout(location = 0) out vec4 o_color;
 
-struct Transforms{
-    mat4 model;
-    mat4 view;
-    mat4 proj;
-};
-
 layout(location = 0) in vec2 f_pos;
 layout(location = 1) in vec2 f_uv;
+layout(location = 2) in vec2 f_bguv;
 
 layout(set = 0, binding = 0) uniform transforms{
     mat4 model;
@@ -20,10 +15,10 @@ layout(set = 0, binding = 0) uniform transforms{
 layout(set = 1, binding = 0) uniform texture2D t_self;
 layout(set = 1, binding = 1) uniform sampler s_self;
 
-layout(set = 2, binding = 0) uniform stroke{
+layout(set = 2, binding = 0) uniform Stroke{
     vec2 pos0;
     vec2 pos1;
-};
+}stroke;
 
 
 layout(set = 3, binding = 0) uniform texture2D t_background;
@@ -41,14 +36,14 @@ float falloft(float t){
 
 void main(){
 
-    vec2 uv = f_uv;
+    vec2 uv = f_bguv;
 
-    vec2 n = normalize(pos1 - pos0);
-    float t = dot(n, uv - pos0);
-    vec2 p = t * n + pos0;
+    vec2 n = normalize(stroke.pos1 - stroke.pos0);
+    float t = dot(n, uv - stroke.pos0);
+    vec2 p = t * n + stroke.pos0;
     float d = length(p - uv);
 
     vec4 brush_val = vec4(fallofn(d * 50.0), 0.0, 0.0, 1.0) * falloft(t);
 
-    o_color = texture(sampler2D(t_self, s_self), f_uv) * brush_val;
+    o_color = texture(sampler2D(t_self, s_self), f_uv) + brush_val;
 }

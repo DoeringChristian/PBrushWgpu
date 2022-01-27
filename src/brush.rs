@@ -48,7 +48,7 @@ impl BrushOp{
             .push_named("background", &texture_bgl)
             .create(device, None);
 
-        let vert_shader = pipeline::shader_with_shaderc(device, include_str!("shaders/vert_model.glsl"), shaderc::ShaderKind::Vertex, "main", Some("VertexShader"))?;
+        let vert_shader = pipeline::shader_with_shaderc(device, include_str!("shaders/vert_brush.glsl"), shaderc::ShaderKind::Vertex, "main", Some("VertexShader"))?;
         let frag_shader = pipeline::shader_with_shaderc(device, include_str!("shaders/frag_brush01.glsl"), shaderc::ShaderKind::Fragment, "main", Some("FragmentShader"))?;
 
         let vertex_state = pipeline::VertexStateBuilder::new(&vert_shader)
