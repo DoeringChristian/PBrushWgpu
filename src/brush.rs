@@ -15,16 +15,16 @@ use crate::binding::ToBindGroupLayout;
 
 pub struct BrushOp{
     render_pipeline: pipeline::RenderPipeline,
-    drawable: Arc<dyn mesh::Drawable>,
+    drawable: Arc<dyn mesh::Drawable<()>>,
 }
 
-pub struct BrushOpData<'bg>{
+pub struct BrushOpRenderData<'bg>{
     stroke_data: StrokeData<'bg>,
     stroke: &'bg buffer::UniformBindGroup<StrokeUniform>,
 }
 
 /// Add an iter for layouts and bindgroups
-impl<'bg> BrushOpData<'bg>{
+impl<'bg> BrushOpRenderData<'bg>{
 }
 
 impl BrushOp{
@@ -64,7 +64,7 @@ impl BrushOp{
 
     // TODO: change bind_groups to render_pass.
     pub fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>) -> Result<()>{
-        self.drawable.draw(render_pass);
+        self.drawable.draw(render_pass, ());
 
         Ok(())
     }
@@ -74,15 +74,15 @@ impl BrushOp{
     }
 }
 
-impl<'pd> mesh::DataDrawable<'pd, BrushOpData<'pd>> for BrushOp{
-    fn draw_data(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: BrushOpData<'pd>){
+impl mesh::DataDrawable<BrushOpRenderData<'_>> for BrushOp{
+    fn draw_data<'pd>(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: BrushOpRenderData<'_>){
         let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
 
         render_pass_pipeline.set_bind_group("background", data.stroke_data.background.get_bind_group(), &[]);
         render_pass_pipeline.set_bind_group("self", data.stroke_data.tex_self.get_bind_group(), &[]);
         render_pass_pipeline.set_bind_group("stroke", data.stroke.get_bind_group(), &[]);
         
-        self.drawable.draw(&mut render_pass_pipeline);
+        self.drawable.draw(&mut render_pass_pipeline, ());
     }
 }
 
@@ -129,9 +129,9 @@ impl Stroke{
     }
 }
 
-impl<'pd> mesh::DataDrawable<'pd, StrokeData<'pd>> for Stroke{
-    fn draw_data(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: StrokeData<'pd>) {
-        self.brushop.draw_data(queue, render_pass, BrushOpData{
+impl mesh::DataDrawable<StrokeData<'_>> for Stroke{
+    fn draw_data<'pd>(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: StrokeData<'_>) {
+        self.brushop.draw_data(queue, render_pass, BrushOpRenderData{
             stroke_data: data,
             stroke: &self.uniform,
         });

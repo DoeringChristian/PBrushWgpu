@@ -16,17 +16,17 @@ use std::marker::PhantomData;
 /// The Function vert_buffer_layout can be used to extract the vertex buffer layout when creating a
 /// RenderPipeline.
 ///
-pub trait Drawable{
-    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>);
+pub trait Drawable<D>{
+    fn draw<'rd>(&'rd self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rd, '_>, data: D);
     fn vert_buffer_layout(&self) -> wgpu::VertexBufferLayout<'static>;
 }
 
-pub trait UpdatedDrawable<D>: Drawable{
-    fn update(&mut self, queue: &wgpu::Queue, data: &D);
-    fn update_draw<'rp>(&'rp mut self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>, data: &D){
-        self.update(queue, data);
-        self.draw(render_pass)
-    }
+pub trait Updateable<D>{
+    fn update(&mut self, queue: &wgpu::Queue, data: D);
+}
+
+pub trait UpdatedDrawable<U, D>: Updateable<U> + Drawable<D>{
+
 }
 
 ///
@@ -34,8 +34,8 @@ pub trait UpdatedDrawable<D>: Drawable{
 ///
 /// It has to get data from somewhere for example textures to draw to.
 ///
-pub trait DataDrawable<'pd, D>{
-    fn draw_data(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: D);
+pub trait DataDrawable<D>{
+    fn draw_data<'pd>(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: D);
 }
 
 pub struct Mesh<V: Vert>{
@@ -63,8 +63,8 @@ impl<V: Vert> Mesh<V>{
     }
 }
 
-impl<V: Vert> Drawable for Mesh<V>{
-    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>) {
+impl<V: Vert> Drawable<()> for Mesh<V>{
+    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>, data: ()) {
 
         render_pass.set_vertex_buffer("model", self.vertex_buffer.slice(..));
         render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
@@ -110,11 +110,11 @@ impl<V: Vert> Model<V>{
     }
 }
 
-impl<V: Vert> Drawable for Model<V>{
-    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>) {
+impl<V: Vert> Drawable<()> for Model<V>{
+    fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>, data: ()) {
         render_pass.set_bind_group("transforms", &self.uniform_buffer.get_bind_group(), &[]);
 
-        self.mesh.draw(render_pass);
+        self.mesh.draw(render_pass, ());
     }
 
     fn vert_buffer_layout(&self) -> wgpu::VertexBufferLayout<'static> {
@@ -122,10 +122,13 @@ impl<V: Vert> Drawable for Model<V>{
     }
 }
 
-impl<V: Vert> UpdatedDrawable<ModelTransforms> for Model<V>{
-    fn update(&mut self, queue: &wgpu::Queue, data: &ModelTransforms) {
+impl<V: Vert> Updateable<ModelTransforms> for Model<V>{
+    fn update(&mut self, queue: &wgpu::Queue, data: ModelTransforms) {
         self.uniform_buffer.update(queue, &data);
     }
 }
 
+impl<V: Vert> UpdatedDrawable<ModelTransforms, ()> for Model<V>{
+
+}
 

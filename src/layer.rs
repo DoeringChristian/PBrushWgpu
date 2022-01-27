@@ -25,7 +25,7 @@ struct LayerUniform{
 }
 
 pub struct Layer{
-    drawable: Box<dyn UpdatedDrawable<ModelTransforms>>,
+    drawable: Box<dyn UpdatedDrawable<ModelTransforms, ()>>,
     tex_src: texture::Texture,
     // a temporary texture for painting to and from the layer.
     tex_target: texture::Texture,
@@ -205,9 +205,9 @@ impl Layer{
 
         render_pass_pipeline.set_bind_group("src", &self.tex_src.bind_group, &[]);
 
-        self.drawable.update(queue, &model_transforms);
+        self.drawable.update(queue, model_transforms);
 
-        self.drawable.draw(&mut render_pass_pipeline);
+        self.drawable.draw(&mut render_pass_pipeline, ());
 
         Ok(())
     }

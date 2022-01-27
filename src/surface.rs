@@ -8,7 +8,7 @@ use anyhow::*;
 use std::sync::Arc;
 
 pub struct Surface{
-    drawable: Arc<dyn mesh::Drawable>,
+    drawable: Arc<dyn mesh::Drawable<()>>,
     tex_target: texture::Texture,
     tex_src: texture::Texture,
 

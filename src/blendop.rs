@@ -17,7 +17,7 @@ use std::sync::Arc;
 /// Eventually move Mesh to some manager because all BlendOps could use the same.
 ///
 pub struct BlendOp{
-    drawable: Box<dyn mesh::Drawable>,
+    drawable: Box<dyn mesh::Drawable<()>>,
     render_pipeline: pipeline::RenderPipeline,
 }
 
@@ -60,7 +60,7 @@ impl BlendOp{
             render_pass_pipeline.set_bind_group("src", src0, &[]);
             render_pass_pipeline.set_bind_group("dst", src1, &[]);
 
-            self.drawable.draw(&mut render_pass_pipeline);
+            self.drawable.draw(&mut render_pass_pipeline, ());
         }
 
         Ok(())
