@@ -1,3 +1,4 @@
+use crate::brush::StrokeData;
 use crate::mesh;
 use crate::mesh::*;
 use crate::program;
@@ -226,13 +227,11 @@ impl Layer{
                 let mut render_pass = pipeline::RenderPassBuilder::new()
                     .push_color_attachment(self.tex_target.view.color_attachment_clear())
                     .begin(encoder, None);
-                let mut render_pass_pipeline = render_pass.set_pipeline(stroke.get_pipeline());
 
-                render_pass_pipeline.set_bind_group("background", prev, &[]);
-                render_pass_pipeline.set_bind_group("self", &self.tex_src.bind_group, &[]);
-
-                stroke.draw(&mut render_pass_pipeline)?;
-
+                stroke.draw_data(&mut render_pass, StrokeData{
+                    background: prev,
+                    tex_self: &self.tex_src.bind_group,
+                });
             }
 
             self.tex_target.copy_all_to(&mut self.tex_src, encoder);

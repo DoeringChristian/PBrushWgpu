@@ -68,7 +68,7 @@ impl BlendOp{
 }
 
 impl<'pd> mesh::DataDrawable<'pd, (&'pd wgpu::BindGroup, &'pd wgpu::BindGroup)> for BlendOp{
-    fn draw_data(&'pd self, queue: &wgpu::Queue, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: (&'pd wgpu::BindGroup, &'pd wgpu::BindGroup)) {
+    fn draw_data(&'pd self, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: (&'pd wgpu::BindGroup, &'pd wgpu::BindGroup)) {
         let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
 
         render_pass_pipeline.set_bind_group("src", data.0, &[]);
