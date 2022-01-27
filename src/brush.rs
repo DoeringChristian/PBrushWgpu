@@ -8,6 +8,7 @@ use crate::vert;
 use crate::program;
 use crate::texture;
 use crate::pipeline;
+use crate::layer;
 use crate::binding::GetBindGroup;
 use crate::render_target::RenderTarget;
 use crate::binding::ToBindGroupLayout;
@@ -19,8 +20,9 @@ pub struct BrushOp{
 }
 
 pub struct BrushOpData<'bg>{
-    stroke_data: StrokeData<'bg>,
-    stroke: &'bg buffer::UniformBindGroup<StrokeUniform>,
+    stroke_data: StrokeBindGroups<'bg>,
+    stroke: &'bg buffer::UniformBindGroup<StrokeDataUniform>,
+    transforms: &'bg buffer::UniformBindGroup<mesh::ModelTransforms>,
 }
 
 /// Add an iter for layouts and bindgroups
@@ -36,12 +38,14 @@ impl BrushOp{
         )?);
 
         let texture_bgl = texture::Texture::create_bind_group_layout(device, None);
-        let uniform_bgl = buffer::UniformBindGroup::<StrokeUniform>::create_bind_group_layout(device, None);
+        let stroke_uniform_bgl = buffer::UniformBindGroup::<StrokeDataUniform>::create_bind_group_layout(device, None);
+        let transforms_uniform_bgl = buffer::UniformBindGroup::<mesh::ModelTransforms>::create_bind_group_layout(device, None);
 
         let render_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
             .push_named("background", &texture_bgl)
             .push_named("self", &texture_bgl)
-            .push_named("stroke", &uniform_bgl)
+            .push_named("stroke", &stroke_uniform_bgl)
+            .push_named("transforms", &transforms_uniform_bgl)
             .create(device, None);
 
         let vertex_state_layout = pipeline::VertexStateLayoutBuilder::new()
@@ -75,12 +79,13 @@ impl BrushOp{
 }
 
 impl<'pd> mesh::DataDrawable<'pd, BrushOpData<'pd>> for BrushOp{
-    fn draw_data(&'pd self, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: BrushOpData<'pd>){
+    fn draw_bind_groups(&'pd self, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: BrushOpData<'pd>){
         let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
 
         render_pass_pipeline.set_bind_group("background", data.stroke_data.background, &[]);
         render_pass_pipeline.set_bind_group("self", data.stroke_data.tex_self, &[]);
         render_pass_pipeline.set_bind_group("stroke", data.stroke.get_bind_group(), &[]);
+        render_pass_pipeline.set_bind_group("transforms", data.transforms.get_bind_group(), &[]);
         
         self.drawable.draw(&mut render_pass_pipeline);
     }
@@ -88,52 +93,46 @@ impl<'pd> mesh::DataDrawable<'pd, BrushOpData<'pd>> for BrushOp{
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct StrokeUniform{
+pub struct StrokeDataUniform{
     pub pos0: [f32; 2],
     pub pos1: [f32; 2],
 }
 
-pub struct StrokeData<'bg>{
+pub struct StrokeBindGroups<'bg>{
     pub background: &'bg wgpu::BindGroup,
     pub tex_self: &'bg wgpu::BindGroup,
 }
 
 pub struct Stroke{
     brushop: Arc<BrushOp>,
-    pub uniform: buffer::UniformBindGroup<StrokeUniform>,
+    pub data_uniform: buffer::UniformBindGroup<StrokeDataUniform>,
+    pub transforms_uniform: buffer::UniformBindGroup<mesh::ModelTransforms>,
 }
 
 impl Stroke{
-    pub fn new(device: &wgpu::Device, brushop: Arc<BrushOp>, suniform: StrokeUniform) -> Self{
-
-
-        let uniform = buffer::UniformBindGroup::new_with_data(device, &suniform);
+    pub fn new(device: &wgpu::Device, brushop: Arc<BrushOp>, suniform: StrokeDataUniform) -> Self{
+        let data_uniform = buffer::UniformBindGroup::new_with_data(device, &suniform);
+        let transforms_uniform = buffer::UniformBindGroup::new(device);
 
         Self{
             brushop,
-            uniform,
+            data_uniform,
+            transforms_uniform,
         }
     }
 
-    pub fn draw<'rp>(&'rp self, render_pass: &'_ mut pipeline::RenderPassPipeline<'rp, '_>) -> Result<()>{
-
-        render_pass.set_bind_group("stroke", &self.uniform.binding_group, &[]);
-        
-        self.brushop.draw(render_pass)?;
-
-        Ok(())
+    pub fn update_transforms(&mut self, queue: &wgpu::Queue, transforms_uniform: &mesh::ModelTransforms){
+        self.transforms_uniform.update(queue, transforms_uniform);
     }
 
-    pub fn get_pipeline(&self) -> &pipeline::RenderPipeline{
-        self.brushop.get_pipeline()
-    }
 }
 
-impl<'pd> mesh::DataDrawable<'pd, StrokeData<'pd>> for Stroke{
-    fn draw_data(&'pd self, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: StrokeData<'pd>) {
-        self.brushop.draw_data(render_pass, BrushOpData{
+impl<'pd> mesh::DataDrawable<'pd, StrokeBindGroups<'pd>> for Stroke{
+    fn draw_bind_groups(&'pd self, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: StrokeBindGroups<'pd>) {
+        self.brushop.draw_bind_groups(render_pass, BrushOpData{
             stroke_data: data,
-            stroke: &self.uniform,
+            stroke: &self.data_uniform,
+            transforms: &self.transforms_uniform,
         });
     }
 }

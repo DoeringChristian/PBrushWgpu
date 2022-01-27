@@ -5,6 +5,12 @@ struct Stroke{
     pos1: vec2<f32>;
 };
 
+struct Transforms{
+    model: mat4x4<f32>;
+    view: mat4x4<f32>;
+    proj: mat4x4<f32>;
+};
+
 struct VertexInput{
     [[location(0)]] pos: vec2<f32>;
     [[location(1)]] uv: vec2<f32>;
@@ -14,6 +20,9 @@ struct VertexOutput{
     [[builtin(position)]] clip_position: vec4<f32>;
     [[location(0)]] uv: vec2<f32>;
 };
+
+[[group(3), binding(0)]]
+var<uniform> transforms: Transforms;
 
 [[stage(vertex)]]
 fn vs_main(model: VertexInput) -> VertexOutput{
@@ -44,10 +53,18 @@ fn fallof(x: f32) -> f32{
 [[stage(fragment)]]
 fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32>{
 
-    var n:vec2<f32> = normalize((stroke.pos1 - stroke.pos0));
-    var t: f32 = dot(n, in.uv - stroke.pos0);
-    var p: vec2<f32> = t * n + stroke.pos0;
-    var d: f32 = length(p - in.uv);
+    let uv = in.uv;
 
-    return textureSample(t_self, s_self, in.uv) + vec4<f32>(fallof(d * 50.0), 0.0, 0.0, 0.0);
+    var n:vec2<f32> = normalize((stroke.pos1 - stroke.pos0));
+    var t: f32 = dot(n, uv - stroke.pos0);
+    var p: vec2<f32> = t * n + stroke.pos0;
+    var d: f32 = length(p - uv);
+
+    var brush_val: vec4<f32> = vec4<f32>(fallof(d * 50.0), 0.0, 0.0, 0.0);
+
+    if(t < 0.0 || t > 1.0){
+        brush_val = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+    }
+
+    return textureSample(t_self, s_self, in.uv) * brush_val;
 }

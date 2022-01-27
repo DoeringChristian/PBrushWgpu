@@ -52,10 +52,10 @@ impl Canvas {
         for (i, layer) in self.layers.iter().enumerate() {
 
             if i % 2 == 0{
-                layer.borrow_mut().apply_strokes(encoder, &self.tex_tmp2.bind_group)?;
+                layer.borrow_mut().apply_strokes(queue, encoder, &self.tex_tmp2.bind_group, dst_size)?;
             }
             else{
-                layer.borrow_mut().apply_strokes(encoder, &self.tex_tmp1.bind_group)?;
+                layer.borrow_mut().apply_strokes(queue, encoder, &self.tex_tmp1.bind_group, dst_size)?;
             }
 
 

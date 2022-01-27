@@ -89,7 +89,9 @@ impl<S: 'static +  State> Framework<S>{
         env_logger::init();
 
         let event_loop = EventLoop::new();
-        let window = WindowBuilder::new().build(&event_loop).unwrap();
+        let window = WindowBuilder::new()
+            .with_inner_size(winit::dpi::LogicalSize::new(1000, 600))
+            .build(&event_loop).unwrap();
 
         let mut fstate = pollster::block_on(FrameworkState::new(window));
 

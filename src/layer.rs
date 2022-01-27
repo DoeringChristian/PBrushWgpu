@@ -1,4 +1,4 @@
-use crate::brush::StrokeData;
+use crate::brush::StrokeBindGroups;
 use crate::mesh;
 use crate::mesh::*;
 use crate::program;
@@ -18,11 +18,11 @@ use std::sync::Arc;
 use crate::binding;
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct LayerUniform{
-    model: [[f32; 4]; 4],
-    view: [[f32; 4]; 4],
-    proj: [[f32; 4]; 4],
+#[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct TransformsUniform{
+    pub model: [[f32; 4]; 4],
+    pub view: [[f32; 4]; 4],
+    pub proj: [[f32; 4]; 4],
 }
 
 pub struct Layer{
@@ -32,9 +32,9 @@ pub struct Layer{
     tex_target: texture::Texture,
     render_pipeline: pipeline::RenderPipeline,
 
-    translation: glm::Vec3,
-    scale: glm::Vec3,
-    rotation: glm::Vec4,
+    pub translation: glm::Vec3,
+    pub scale: glm::Vec3,
+    pub rotation: glm::Vec4,
     uniform_buffer: buffer::UniformBindGroup<ModelTransforms>,
 
     blendop: Arc<BlendOp>,
@@ -186,7 +186,7 @@ impl Layer{
         let translation = glm::Mat4::new_translation(&self.translation);
 
         let size_vec = glm::vec2(dst_size[0] as f32, dst_size[1] as f32);
-        let size_vec_norm = size_vec.normalize();
+        let size_vec_norm = size_vec;
         let proj: [[f32; 4]; 4] = glm::ortho(-size_vec_norm[0]/2.0, size_vec_norm[0]/2.0, size_vec_norm[1]/2.0, -size_vec_norm[1]/2.0, -1.0, 1.0).into();
         let view: [[f32; 4]; 4] = glm::Mat4::identity().into();
 
@@ -221,14 +221,35 @@ impl Layer{
         self.strokes.push_back(stroke);
     }
 
-    pub fn apply_strokes(&mut self, encoder: &mut wgpu::CommandEncoder, prev: &wgpu::BindGroup) -> Result<()>{
-        for stroke in &self.strokes{
+    pub fn apply_strokes(&mut self, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder, prev: &wgpu::BindGroup, view: [u32; 2]) -> Result<()>{
+
+        let axisv = glm::vec3(self.rotation.x, self.rotation.y, self.rotation.z);
+        let axis: nalgebra::Unit<glm::Vec3> = nalgebra::Unit::new_normalize(axisv);
+        let rot = glm::Mat4::from_axis_angle(&axis, self.rotation[3]);
+        let scale = glm::Mat4::new_nonuniform_scaling(&self.scale);
+        let translation = glm::Mat4::new_translation(&self.translation);
+
+        let size_vec = glm::vec2(view[0] as f32, view[1] as f32);
+        let size_vec_norm = size_vec;
+        let proj: [[f32; 4]; 4] = glm::ortho(-size_vec_norm[0]/2.0, size_vec_norm[0]/2.0, size_vec_norm[1]/2.0, -size_vec_norm[1]/2.0, -1.0, 1.0).into();
+        let view: [[f32; 4]; 4] = glm::Mat4::identity().into();
+
+        let model = ((translation * scale) * rot).into();
+        let model_transforms = ModelTransforms{
+            model,
+            view,
+            proj,
+        };
+
+        for stroke in &mut self.strokes{
             {
                 let mut render_pass = pipeline::RenderPassBuilder::new()
                     .push_color_attachment(self.tex_target.view.color_attachment_clear())
                     .begin(encoder, None);
 
-                stroke.draw_data(&mut render_pass, StrokeData{
+                stroke.update_transforms(queue, &model_transforms);
+
+                stroke.draw_bind_groups(&mut render_pass, StrokeBindGroups{
                     background: prev,
                     tex_self: &self.tex_src.bind_group,
                 });

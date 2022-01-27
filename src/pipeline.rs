@@ -297,8 +297,12 @@ fn shader_load(device: &wgpu::Device, path: &str, label: Option<&str>) -> Result
     }))
 }
 
-struct RenderPipelineBuilder{
-    shader: wgpu::ShaderModule,
+pub struct RenderPipelineBuilder{
+    //shader: wgpu::ShaderModule,
+}
+
+impl RenderPipelineBuilder{
+
 }
 
 // TODO:

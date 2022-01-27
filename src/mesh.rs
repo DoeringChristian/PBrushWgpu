@@ -35,7 +35,7 @@ pub trait UpdatedDrawable<D>: Drawable{
 /// It has to get data from somewhere for example textures to draw to.
 ///
 pub trait DataDrawable<'pd, D>{
-    fn draw_data(&'pd self, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: D);
+    fn draw_bind_groups(&'pd self, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: D);
 }
 
 pub struct Mesh<V: Vert>{
