@@ -42,22 +42,30 @@ impl BrushOp{
         let transforms_uniform_bgl = buffer::UniformBindGroup::<mesh::ModelTransforms>::create_bind_group_layout(device, None);
 
         let render_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
-            .push_named("background", &texture_bgl)
+            .push_named("transforms", &transforms_uniform_bgl)
             .push_named("self", &texture_bgl)
             .push_named("stroke", &stroke_uniform_bgl)
-            .push_named("transforms", &transforms_uniform_bgl)
+            .push_named("background", &texture_bgl)
             .create(device, None);
 
-        let vertex_state_layout = pipeline::VertexStateLayoutBuilder::new()
+        let vert_shader = pipeline::shader_with_shaderc(device, include_str!("shaders/vert_model.glsl"), shaderc::ShaderKind::Vertex, "main", Some("VertexShader"))?;
+        let frag_shader = pipeline::shader_with_shaderc(device, include_str!("shaders/frag_brush01.glsl"), shaderc::ShaderKind::Fragment, "main", Some("FragmentShader"))?;
+
+        let vertex_state = pipeline::VertexStateBuilder::new(&vert_shader)
             .push_named("model", drawable.vert_buffer_layout())
+            .set_entry_point("main")
+            .build();
+
+        let fragment_state = pipeline::FragmentStateBuilder::new(&frag_shader)
+            .set_entry_point("main")
             .build();
 
         let render_pipeline = program::new(
             &device,
-            src,
             format,
             &render_pipeline_layout,
-            &vertex_state_layout,
+            &vertex_state,
+            &fragment_state,
         )?;
 
         Ok(Self{
@@ -82,10 +90,10 @@ impl<'pd> mesh::DataDrawable<'pd, BrushOpData<'pd>> for BrushOp{
     fn draw_bind_groups(&'pd self, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: BrushOpData<'pd>){
         let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
 
+        render_pass_pipeline.set_bind_group("transforms", data.transforms.get_bind_group(), &[]);
         render_pass_pipeline.set_bind_group("background", data.stroke_data.background, &[]);
         render_pass_pipeline.set_bind_group("self", data.stroke_data.tex_self, &[]);
         render_pass_pipeline.set_bind_group("stroke", data.stroke.get_bind_group(), &[]);
-        render_pass_pipeline.set_bind_group("transforms", data.transforms.get_bind_group(), &[]);
         
         self.drawable.draw(&mut render_pass_pipeline);
     }

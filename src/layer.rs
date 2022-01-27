@@ -16,6 +16,7 @@ use anyhow::*;
 use std::collections::VecDeque;
 use std::sync::Arc;
 use crate::binding;
+use std::borrow::Cow;
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, bytemuck::Pod, bytemuck::Zeroable)]
@@ -74,20 +75,29 @@ impl Layer{
         let uniform_buffer = buffer::UniformBindGroup::new_with_data(device, &model_transforms);
 
         let render_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
-            .push_named("src", &texture.bind_group_layout)
             .push_named("transforms", &uniform_buffer.get_bind_group_layout())
+            .push_named("src", &texture.bind_group_layout)
             .create(device, None);
 
-        let vertex_state = pipeline::VertexStateLayoutBuilder::new()
+        let vertex_shader = pipeline::shader_with_shaderc(device, include_str!("shaders/vert_model.glsl"), shaderc::ShaderKind::Vertex, "main", Some("VertexShader"))?;
+
+        let vertex_state = pipeline::VertexStateBuilder::new(&vertex_shader)
             .push_named("model", drawable.vert_buffer_layout())
+            .set_entry_point("main")
+            .build();
+
+        let fragment_shader = pipeline::shader_with_shaderc(device, include_str!("shaders/frag_forward.glsl"), shaderc::ShaderKind::Fragment, "main", Some("FragmentShader"))?;
+
+        let fragment_state = pipeline::FragmentStateBuilder::new(&fragment_shader)
+            .set_entry_point("main")
             .build();
 
         let render_pipeline = program::new(
             &device,
-            include_str!("shaders/forward_model.wgsl"),
             *format,
             &render_pipeline_layout,
             &vertex_state,
+            &fragment_state,
         )?;
 
         let translation = glm::vec3(0.0, 0.0, 0.0);
@@ -139,20 +149,29 @@ impl Layer{
         let uniform_buffer = buffer::UniformBindGroup::new_with_data(device, &model_transforms);
 
         let render_pipeline_layout = pipeline::PipelineLayoutBuilder::new()
-            .push_named("src", &texture.bind_group_layout)
             .push_named("transforms", &uniform_buffer.get_bind_group_layout())
+            .push_named("src", &texture.bind_group_layout)
             .create(device, None);
 
-        let vertex_state = pipeline::VertexStateLayoutBuilder::new()
+        let vertex_shader = pipeline::shader_with_shaderc(device, include_str!("shaders/vert_model.glsl"), shaderc::ShaderKind::Vertex, "main", Some("VertexShader"))?;
+
+        let vertex_state = pipeline::VertexStateBuilder::new(&vertex_shader)
             .push_named("model", drawable.vert_buffer_layout())
+            .set_entry_point("main")
+            .build();
+
+        let fragment_shader = pipeline::shader_with_shaderc(device, include_str!("shaders/frag_forward.glsl"), shaderc::ShaderKind::Fragment, "main", Some("FragmentShader"))?;
+
+        let fragment_state = pipeline::FragmentStateBuilder::new(&fragment_shader)
+            .set_entry_point("main")
             .build();
 
         let render_pipeline = program::new(
             &device,
-            include_str!("shaders/forward_model.wgsl"),
             *format,
             &render_pipeline_layout,
             &vertex_state,
+            &fragment_state,
         )?;
 
         let translation = glm::vec3(0.0, 0.0, 0.0);

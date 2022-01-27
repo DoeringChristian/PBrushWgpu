@@ -152,6 +152,7 @@ mod glsl{
         wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering)
     }
 
+    #[allow(non_snake_case)]
     pub fn texture2D() -> wgpu::BindingType {
         wgpu::BindingType::Texture {
             sample_type: wgpu::TextureSampleType::Float { filterable: true },
@@ -160,6 +161,7 @@ mod glsl{
         }
     }
 
+    #[allow(non_snake_case)]
     pub fn texture2DArray() -> wgpu::BindingType {
         wgpu::BindingType::Texture {
             sample_type: wgpu::TextureSampleType::Float { filterable: true },
@@ -168,6 +170,7 @@ mod glsl{
         }
     }
 
+    #[allow(non_snake_case)]
     pub fn itexture2D() -> wgpu::BindingType {
         wgpu::BindingType::Texture {
             sample_type: wgpu::TextureSampleType::Sint,
@@ -176,6 +179,7 @@ mod glsl{
         }
     }
 
+    #[allow(non_snake_case)]
     pub fn utexture2D() -> wgpu::BindingType {
         wgpu::BindingType::Texture {
             sample_type: wgpu::TextureSampleType::Uint,
@@ -184,6 +188,7 @@ mod glsl{
         }
     }
 
+    #[allow(non_snake_case)]
     pub fn texture3D() -> wgpu::BindingType {
         wgpu::BindingType::Texture {
             sample_type: wgpu::TextureSampleType::Float { filterable: true },
@@ -192,6 +197,7 @@ mod glsl{
         }
     }
 
+    #[allow(non_snake_case)]
     pub fn itexture3D() -> wgpu::BindingType {
         wgpu::BindingType::Texture {
             sample_type: wgpu::TextureSampleType::Sint,
@@ -200,6 +206,7 @@ mod glsl{
         }
     }
 
+    #[allow(non_snake_case)]
     pub fn utexture3D() -> wgpu::BindingType {
         wgpu::BindingType::Texture {
             sample_type: wgpu::TextureSampleType::Uint,
@@ -208,6 +215,7 @@ mod glsl{
         }
     }
 
+    #[allow(non_snake_case)]
     pub fn textureCube() -> wgpu::BindingType {
         wgpu::BindingType::Texture {
             sample_type: wgpu::TextureSampleType::Float { filterable: true },

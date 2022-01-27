@@ -10,29 +10,62 @@ use crate::binding;
 use std::borrow::Cow;
 use anyhow::*;
 use core::ops::Range;
+use naga;
 
-pub struct FragmentStateLayout<'fs>{
+pub struct FragmentState<'fs>{
     pub color_target_states: Vec<wgpu::ColorTargetState>,
     pub entry_point: &'fs str,
+    pub shader: &'fs wgpu::ShaderModule,
 }
 
-pub struct FragmentStateLayoutBuilder<'fsb>{
+pub struct FragmentStateBuilder<'fsb>{
     pub color_target_states: Vec<wgpu::ColorTargetState>,
+    shader: &'fsb wgpu::ShaderModule,
     entry_point: &'fsb str,
 }
 
-impl <'fsb> FragmentStateLayoutBuilder<'fsb>{
-    pub fn new() -> Self{
+impl <'fsb> FragmentStateBuilder<'fsb>{
+    pub fn new(shader: &'fsb wgpu::ShaderModule) -> Self{
         Self{
             color_target_states: Vec::new(),
-            entry_point: "main",
+            shader,
+            entry_point: "fs_main",
         }
     }
+
+    // TODO: create shader in build
+    /*
+    pub fn new_from_src_glsl<'s>(device: &wgpu::Device, src: &'s str) -> Self{
+        let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
+            label: None,
+            source: wgpu::ShaderSource::Glsl{
+                shader: Cow::from(src),
+                stage: naga::ShaderStage::Fragment,
+                defines: naga::FastHashMap::default()
+            }
+        });
+
+        Self{
+            color_target_states: Vec::new(),
+            entry_point: "fs_main",
+            shader: &shader,
+        }
+    }
+    */
     
     pub fn set_entry_point(mut self, entry_point: &'fsb str) -> Self{
         self.entry_point = entry_point;
         self
     }
+
+    pub fn build(&self) -> FragmentState<'fsb>{
+        FragmentState{
+            color_target_states: self.color_target_states.clone(),
+            entry_point: self.entry_point,
+            shader: self.shader,
+        }
+    }
+
 }
 
 ///
@@ -40,30 +73,55 @@ impl <'fsb> FragmentStateLayoutBuilder<'fsb>{
 /// It describes the buffer layouts as well as the names used when setting by name in the 
 /// RenderPassPipeline process.
 ///
-pub struct VertexStateLayout<'vs>{
+pub struct VertexState<'vs>{
     pub vertex_buffer_layouts: Vec<wgpu::VertexBufferLayout<'vs>>,
     /// used to save names and corresponding indices.
     pub vertex_buffer_names: Arc<HashMap<String, usize>>,
     pub entry_point: &'vs str,
+    pub vertex_shader: &'vs wgpu::ShaderModule,
 }
 
-pub struct VertexStateLayoutBuilder<'vsb>{
+pub struct VertexStateBuilder<'vsb>{
     vertex_buffer_layouts: Vec<wgpu::VertexBufferLayout<'vsb>>,
     vertex_buffer_names: HashMap<String, usize>,
     entry_point: &'vsb str,
     //module: &'vsb wgpu::ShaderModule,
+    vertex_shader: &'vsb wgpu::ShaderModule,
     index: usize,
 }
 
-impl <'vsb> VertexStateLayoutBuilder<'vsb>{
-    pub fn new() -> Self{
+impl <'vsb> VertexStateBuilder<'vsb>{
+    pub fn new(vertex_shader: &'vsb wgpu::ShaderModule) -> Self{
         Self{
             vertex_buffer_layouts: Vec::new(),
             vertex_buffer_names: HashMap::new(),
             entry_point: "vs_main",
             index: 0,
+            vertex_shader,
         }
     }
+
+    // TODO: create shader in build.
+    /*
+    pub fn new_from_src_glsl<'s>(device: &wgpu::Device, src: &'s str) -> Self{
+        let vertex_shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
+            label: None,
+            source: wgpu::ShaderSource::Glsl{
+                shader: Cow::from(src),
+                stage: naga::ShaderStage::Vertex,
+                defines: naga::FastHashMap::default()
+            }
+        });
+
+        Self{
+            vertex_buffer_layouts: Vec::new(),
+            vertex_buffer_names: HashMap::new(),
+            entry_point: "vs_main",
+            index: 0,
+            vertex_shader: &vertex_shader,
+        }
+    }
+    */
 
     pub fn set_entry_point(mut self, entry_point: &'vsb str) -> Self{
         self.entry_point = entry_point;
@@ -83,11 +141,12 @@ impl <'vsb> VertexStateLayoutBuilder<'vsb>{
         self
     }
 
-    pub fn build(self) -> VertexStateLayout<'vsb>{
-        VertexStateLayout{
-            vertex_buffer_names: Arc::new(self.vertex_buffer_names),
-            vertex_buffer_layouts: self.vertex_buffer_layouts,
+    pub fn build(&self) -> VertexState<'vsb>{
+        VertexState{
+            vertex_buffer_names: Arc::new(self.vertex_buffer_names.clone()),
+            vertex_buffer_layouts: self.vertex_buffer_layouts.clone(),
             entry_point: self.entry_point,
+            vertex_shader: self.vertex_shader,
         }
     }
 }
@@ -273,8 +332,7 @@ impl<'rp> RenderPassBuilder<'rp>{
     }
 }
 
-
-fn shader_load(device: &wgpu::Device, path: &str, label: Option<&str>) -> Result<wgpu::ShaderModule>{
+pub fn shader_load(device: &wgpu::Device, path: &str, stage: naga::ShaderStage, label: Option<&str>) -> Result<wgpu::ShaderModule>{
     let mut f = File::open(path)?;
     let metadata = fs::metadata(path)?;
     let mut buffer = vec![0; metadata.len() as usize];
@@ -286,7 +344,11 @@ fn shader_load(device: &wgpu::Device, path: &str, label: Option<&str>) -> Result
 
 
     let source = match extension.to_str().ok_or(anyhow!("string conversion"))?{
-        //"glsl" => wgpu::ShaderSource::Glsl(src),
+        "glsl" => wgpu::ShaderSource::Glsl{
+            shader: Cow::from(src),
+            stage,
+            defines: naga::FastHashMap::default()
+        },
         "wgsl" => wgpu::ShaderSource::Wgsl(Cow::from(src)),
         _ => return Err(anyhow!("Unknown Extension")),
     };
@@ -297,11 +359,39 @@ fn shader_load(device: &wgpu::Device, path: &str, label: Option<&str>) -> Result
     }))
 }
 
-pub struct RenderPipelineBuilder{
-    //shader: wgpu::ShaderModule,
+pub fn shader_with_shaderc(device: &wgpu::Device, src: &str, kind: shaderc::ShaderKind, entry_point: &str, label: Option<&str>) -> Result<wgpu::ShaderModule>{
+
+    let mut compiler = shaderc::Compiler::new().ok_or(anyhow!("error creating compiler"))?;
+    let mut options = shaderc::CompileOptions::new().ok_or(anyhow!("error creating shaderc options"))?;
+
+    options.set_warnings_as_errors();
+    options.set_target_env(shaderc::TargetEnv::Vulkan, 0);
+    options.set_optimization_level(shaderc::OptimizationLevel::Performance);
+    options.set_generate_debug_info();
+
+    let spirv = match label{
+        Some(label) => compiler.compile_into_spirv(src, kind, label, entry_point, None)?,
+        _ => compiler.compile_into_spirv(src, kind, "no_label", entry_point, None)?,
+    };
+
+    let module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
+        label,
+        source: wgpu::ShaderSource::SpirV(Cow::from(spirv.as_binary()))
+    });
+
+    Ok(module)
 }
 
-impl RenderPipelineBuilder{
+
+
+
+pub struct RenderPipelineBuilder<'rpb>{
+    //shader: wgpu::ShaderModule,
+    vertex_module: Option<&'rpb wgpu::ShaderModule>,
+    fragment_module: Option<&'rpb wgpu::ShaderModule>,
+}
+
+impl<'rpb> RenderPipelineBuilder<'rpb>{
 
 }
 

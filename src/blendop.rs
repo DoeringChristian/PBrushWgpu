@@ -10,6 +10,7 @@ use crate::render_target::RenderTarget;
 use crate::binding::ToBindGroupLayout;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::borrow::Cow;
 
 ///
 /// A blend op is used to blend two images together.
@@ -32,16 +33,24 @@ impl BlendOp{
             .push_named("dst", &bind_group_layout)
             .create(device, None);
 
-        let vertex_state_layout = pipeline::VertexStateLayoutBuilder::new()
+        let vert_shader = pipeline::shader_with_shaderc(device, include_str!("shaders/vert_screen.glsl"), shaderc::ShaderKind::Vertex, "main", Some("VertexShader"))?;
+        let frag_shader = pipeline::shader_with_shaderc(device, include_str!("shaders/frag_add.glsl"), shaderc::ShaderKind::Fragment, "main", Some("FragmentShader"))?;
+
+        let vertex_state_layout = pipeline::VertexStateBuilder::new(&vert_shader)
             .push_named("model", drawable.vert_buffer_layout())
+            .set_entry_point("main")
+            .build();
+
+        let fragment_state = pipeline::FragmentStateBuilder::new(&frag_shader)
+            .set_entry_point("main")
             .build();
 
         let render_pipeline = program::new(
             &device,
-            src,
             *format,
             &render_pipeline_layout,
             &vertex_state_layout,
+            &fragment_state,
         )?;
 
         Ok(Self{

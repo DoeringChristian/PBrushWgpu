@@ -3,12 +3,7 @@ use crate::{binding, pipeline};
 
 
 use anyhow::*;
-pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, pipeline_layout: &pipeline::PipelineLayout, vertex_stage_layout: &pipeline::VertexStateLayout) -> Result<pipeline::RenderPipeline>{
-
-    let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
-        label: Some("shader"),
-        source: wgpu::ShaderSource::Wgsl(src.into()),
-    });
+pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat, pipeline_layout: &pipeline::PipelineLayout, vertex_stage: &pipeline::VertexState, fragment_stage: &pipeline::FragmentState) -> Result<pipeline::RenderPipeline>{
 
     /*
     let render_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor{
@@ -22,13 +17,13 @@ pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, pipeli
         label: Some("Render Pipeline"),
         layout: Some(&pipeline_layout.layout),
         vertex: wgpu::VertexState{
-            module: &shader,
-            entry_point: vertex_stage_layout.entry_point,
-            buffers: &vertex_stage_layout.vertex_buffer_layouts,
+            module: &vertex_stage.vertex_shader,
+            entry_point: vertex_stage.entry_point,
+            buffers: &vertex_stage.vertex_buffer_layouts,
         },
         fragment: Some(wgpu::FragmentState{
-            module: &shader,
-            entry_point: "fs_main",
+            module: &fragment_stage.shader,
+            entry_point: fragment_stage.entry_point,
             targets: &[wgpu::ColorTargetState{
                 format,
                 blend: Some(wgpu::BlendState{
@@ -61,7 +56,7 @@ pub fn new(device: &wgpu::Device, src: &str, format: wgpu::TextureFormat, pipeli
         pipeline::RenderPipeline{
             pipeline: render_pipeline,
             bind_group_names: pipeline_layout.names.clone(),
-            vertex_buffer_names: vertex_stage_layout.vertex_buffer_names.clone(),
+            vertex_buffer_names: vertex_stage.vertex_buffer_names.clone(),
         }
     )
 }

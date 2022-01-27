@@ -16,6 +16,7 @@ use std::sync::Arc;
 extern crate more_asserts;
 
 extern crate nalgebra_glm as glm;
+extern crate naga;
 
 mod framework;
 mod vert;
