@@ -128,10 +128,10 @@ impl Texture{
         format: wgpu::TextureFormat
     ) -> Result<Self>{
         let img_data: Vec<u8> = match format{
-            wgpu::TextureFormat::Rgba8Unorm     => img.to_rgba8().into_raw(),
-            wgpu::TextureFormat::Rgba8UnormSrgb => img.to_rgba8().into_raw(),
-            wgpu::TextureFormat::Bgra8Unorm     => img.to_bgra8().into_raw(),
-            wgpu::TextureFormat::Bgra8UnormSrgb => img.to_bgra8().into_raw(),
+            wgpu::TextureFormat::Rgba8Unorm     => img.flipv().to_rgba8().into_raw(),
+            wgpu::TextureFormat::Rgba8UnormSrgb => img.flipv().to_rgba8().into_raw(),
+            wgpu::TextureFormat::Bgra8Unorm     => img.flipv().to_bgra8().into_raw(),
+            wgpu::TextureFormat::Bgra8UnormSrgb => img.flipv().to_bgra8().into_raw(),
             _ => {
                 return Err(anyhow!("Format not supported"));
             }
