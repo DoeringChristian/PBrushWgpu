@@ -12,6 +12,12 @@ use anyhow::*;
 use core::ops::Range;
 use naga;
 
+
+pub trait RenderData{
+    fn pipeline_layout() -> PipelineLayout;
+    fn set_bind_groups(&self, render_pass_pipeline: &mut RenderPassPipeline);
+}
+
 pub struct FragmentState<'fs>{
     pub color_target_states: Vec<wgpu::ColorTargetState>,
     pub entry_point: &'fs str,
@@ -109,17 +115,23 @@ impl <'vsb> VertexStateBuilder<'vsb>{
     }
 }
 
+// tmp
 
-pub trait RenderData{
-    fn create_bind_group_layout(device: &wgpu::Device) -> Vec<binding::BindGroupLayoutWithDesc>;
-    fn get_bind_groups(&self) -> Vec<&wgpu::BindGroup>;
+struct BrushRenderPipelineData{
+
 }
 
+// /tmp
 
-pub struct RenderPipeline{
+pub trait RenderPipelineData{
+    fn render_pipeline_layout() -> PipelineLayout;
+}
+
+pub struct RenderPipeline<D: RenderPipelineData>{
     pub pipeline: wgpu::RenderPipeline,
     pub bind_group_names: Arc<HashMap<String, usize>>,
     pub vertex_buffer_names: Arc<HashMap<String, usize>>,
+    pub render_pipeline_data: D,
 }
 
 pub struct PipelineLayout{

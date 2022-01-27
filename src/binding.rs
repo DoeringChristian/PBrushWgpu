@@ -18,7 +18,6 @@ pub trait GetBindGroup{
 
 
 
-
 pub trait ToBindGroup: ToBindGroupLayout{
     fn create_bind_group(&self, device: &wgpu::Device, layout: &BindGroupLayoutWithDesc, label: Option<&str>) -> wgpu::BindGroup;
 }
