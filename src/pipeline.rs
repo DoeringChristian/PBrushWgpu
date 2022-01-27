@@ -115,23 +115,10 @@ impl <'vsb> VertexStateBuilder<'vsb>{
     }
 }
 
-// tmp
-
-struct BrushRenderPipelineData{
-
-}
-
-// /tmp
-
-pub trait RenderPipelineData{
-    fn render_pipeline_layout() -> PipelineLayout;
-}
-
-pub struct RenderPipeline<D: RenderPipelineData>{
+pub struct RenderPipeline{
     pub pipeline: wgpu::RenderPipeline,
     pub bind_group_names: Arc<HashMap<String, usize>>,
     pub vertex_buffer_names: Arc<HashMap<String, usize>>,
-    pub render_pipeline_data: D,
 }
 
 pub struct PipelineLayout{
