@@ -206,7 +206,7 @@ impl Layer{
 
         let size_vec = glm::vec2(dst_size[0] as f32, dst_size[1] as f32);
         let size_vec_norm = size_vec;
-        let proj: [[f32; 4]; 4] = glm::ortho(-size_vec_norm[0]/2.0, size_vec_norm[0]/2.0, -size_vec_norm[1]/2.0, size_vec_norm[1]/2.0, -1.0, 1.0).into();
+        let proj: [[f32; 4]; 4] = glm::ortho(-size_vec_norm[0]/2.0, size_vec_norm[0]/2.0, size_vec_norm[1]/2.0, -size_vec_norm[1]/2.0, -1.0, 1.0).into();
         let view: [[f32; 4]; 4] = glm::Mat4::identity().into();
 
         let model = ((translation * scale) * rot).into();
@@ -250,7 +250,7 @@ impl Layer{
 
         let size_vec = glm::vec2(view[0] as f32, view[1] as f32);
         let size_vec_norm = size_vec;
-        let proj_mat4 = glm::ortho(-size_vec_norm[0]/2.0, size_vec_norm[0]/2.0, -size_vec_norm[1]/2.0, size_vec_norm[1]/2.0, -1.0, 1.0);
+        let proj_mat4 = glm::ortho(-size_vec_norm[0]/2.0, size_vec_norm[0]/2.0, size_vec_norm[1]/2.0, -size_vec_norm[1]/2.0, -1.0, 1.0);
         let proj: [[f32; 4]; 4] = proj_mat4.into();
         let view: [[f32; 4]; 4] = glm::Mat4::identity().into();
 

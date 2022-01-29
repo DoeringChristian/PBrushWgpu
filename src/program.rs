@@ -24,6 +24,7 @@ pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat, pipeline_layout: 
         fragment: Some(wgpu::FragmentState{
             module: &fragment_stage.shader,
             entry_point: fragment_stage.entry_point,
+            //targets: &fragment_stage.color_target_states,
             targets: &[wgpu::ColorTargetState{
                 format,
                 blend: Some(wgpu::BlendState{
@@ -31,7 +32,7 @@ pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat, pipeline_layout: 
                     alpha: wgpu::BlendComponent::REPLACE,
                 }),
                 write_mask: wgpu::ColorWrites::all(),
-            }],
+            }]
         }),
         primitive: wgpu::PrimitiveState{
             topology: wgpu::PrimitiveTopology::TriangleList,

@@ -15,6 +15,7 @@ pub trait State{
     fn new(fstate: &mut FrameworkState) -> Self;
     fn render(&mut self, fstate: &mut FrameworkState, control_flow: &mut ControlFlow) -> Result<(), wgpu::SurfaceError>{Ok(())}
     fn input(&mut self, event: &WindowEvent) -> bool{false}
+    fn cursor_moved(&mut self, fstate: &mut FrameworkState, device_id: &winit::event::DeviceId, position: &winit::dpi::PhysicalPosition<f64>){}
     fn resize(&mut self, fstate: &mut FrameworkState, new_size: winit::dpi::PhysicalSize<u32>){}
 }
 
@@ -122,6 +123,9 @@ impl<S: 'static +  State> Framework<S>{
                             self.fstate.resize(**new_inner_size);
                             self.state.resize(&mut self.fstate, **new_inner_size);
                         },
+                        WindowEvent::CursorMoved{device_id, position, ..} => {
+                            self.state.cursor_moved(&mut self.fstate, device_id, position);
+                        }
                         _ => {},
                     }
                 },
@@ -137,7 +141,7 @@ impl<S: 'static +  State> Framework<S>{
                     }
                 },
                 Event::DeviceEvent{device_id, event} => {
-                    println!("{:?}", event);
+                    println!("{:?}, {:?}", device_id, event);
                 }
 
                 Event::MainEventsCleared => {

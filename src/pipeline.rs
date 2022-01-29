@@ -31,6 +31,12 @@ pub struct FragmentStateBuilder<'fsb>{
 }
 
 impl <'fsb> FragmentStateBuilder<'fsb>{
+
+    pub const DEFAULT_BLEND_STATE: wgpu::BlendState = wgpu::BlendState{
+        color: wgpu::BlendComponent::REPLACE,
+        alpha: wgpu::BlendComponent::REPLACE,
+    };
+
     pub fn new(shader: &'fsb wgpu::ShaderModule) -> Self{
         Self{
             color_target_states: Vec::new(),
@@ -41,6 +47,11 @@ impl <'fsb> FragmentStateBuilder<'fsb>{
     
     pub fn set_entry_point(mut self, entry_point: &'fsb str) -> Self{
         self.entry_point = entry_point;
+        self
+    }
+    
+    pub fn push_color_target_state(mut self, color_target_state: wgpu::ColorTargetState) -> Self{
+        self.color_target_states.push(color_target_state);
         self
     }
 
@@ -339,18 +350,34 @@ pub fn shader_with_shaderc(device: &wgpu::Device, src: &str, kind: shaderc::Shad
     Ok(module)
 }
 
-
-
-
 pub struct RenderPipelineBuilder<'rpb>{
-    //shader: wgpu::ShaderModule,
+    label: Option<&'rpb str>,
+    layout: Option<&'rpb PipelineLayout>,
     vertex_module: Option<&'rpb wgpu::ShaderModule>,
+    vertex_entry_point: &'rpb str,
+    vertex_buffers: Vec<&'rpb wgpu::VertexBufferLayout<'rpb>>,
     fragment_module: Option<&'rpb wgpu::ShaderModule>,
+    fragment_entry_point: &'rpb str,
+    fragment_targets: Vec<&'rpb wgpu::ColorTargetState>,
 }
 
 impl<'rpb> RenderPipelineBuilder<'rpb>{
-
+    pub fn new() -> Self{
+        Self{
+            label: None,
+            layout: None,
+            vertex_module: None,
+            vertex_entry_point: "main",
+            vertex_buffers: Vec::new(),
+            fragment_module: None,
+            fragment_entry_point: "main",
+            fragment_targets: Vec::new(),
+        }
+    }
 }
+
+
+
 
 // TODO:
 // Counting RenderPass

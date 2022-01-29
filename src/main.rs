@@ -46,6 +46,8 @@ struct WinState{
     brushops: Arc<brush::BrushOpManager>,
 
     canvas: canvas::Canvas,
+
+    cursor_prev: [f32; 2],
 }
 
 impl State for WinState{
@@ -81,8 +83,16 @@ impl State for WinState{
                 &fstate.device,
                 brushops.arc_to("default").unwrap(),
                 brush::StrokeDataUniform{
-                    pos0: [0.1, 0.1],
-                    pos1: [0.9, 0.9],
+                    pos0: [0.4, 0.4],
+                    pos1: [0.45, 0.45],
+                }
+        ));
+        canvas.layers[0].borrow_mut().queue_stroke(brush::Stroke::new(
+                &fstate.device,
+                brushops.arc_to("default").unwrap(),
+                brush::StrokeDataUniform{
+                    pos0: [0.45, 0.45],
+                    pos1: [0.5, 0.45],
                 }
         ));
 
@@ -90,6 +100,7 @@ impl State for WinState{
             blendops,
             brushops,
             canvas,
+            cursor_prev: [0.0, 0.0],
         }
     }
 
@@ -110,6 +121,21 @@ impl State for WinState{
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool{false}
+
+    fn cursor_moved(&mut self, fstate: &mut FrameworkState, device_id: &winit::event::DeviceId, position: &winit::dpi::PhysicalPosition<f64>) {
+        let pos = [position.x as f32 / fstate.size.width as f32, position.y as f32 / fstate.size.height as f32];
+        self.canvas.layers[0].borrow_mut().queue_stroke(brush::Stroke::new(
+                &fstate.device,
+                self.brushops.arc_to("default").unwrap(),
+                brush::StrokeDataUniform{
+                    pos0: self.cursor_prev,
+                    pos1: pos,
+                }
+        ));
+
+        self.cursor_prev = pos;
+        println!("{:?}, {:?}", device_id, position);
+    }
 
     fn resize(&mut self, fstate: &mut FrameworkState, new_size: winit::dpi::PhysicalSize<u32>){
         self.canvas.resize(&fstate.device, &fstate.queue, [new_size.width, new_size.height]).unwrap();
