@@ -25,7 +25,8 @@ layout(set = 2, binding = 0) uniform Stroke{
 
 void main(){
     f_pos = i_pos;
-    f_uv = i_uv;
+    // have to invert y axis of uv
+    f_uv = vec2(i_uv.x, 1-i_uv.y);
 
     // have to use position because the proj matrix is made for the position
     f_bguv = (((model * proj) * vec4(i_pos, 0.0, 1.0)).xy + vec2(1.0, 1.0)) / 2.0;

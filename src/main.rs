@@ -79,6 +79,7 @@ impl State for WinState{
         canvas.layers[0].borrow_mut().scale = glm::vec3(300.0, 200.0, 1.0);
         //canvas.layers[1].borrow_mut().scale = glm::vec3(800.0, 800.0, 1.0);
 
+        /*
         canvas.layers[0].borrow_mut().queue_stroke(brush::Stroke::new(
                 &fstate.device,
                 brushops.arc_to("default").unwrap(),
@@ -95,6 +96,7 @@ impl State for WinState{
                     pos1: [0.5, 0.45],
                 }
         ));
+        */
 
         Self{
             blendops,
@@ -123,7 +125,8 @@ impl State for WinState{
     fn input(&mut self, event: &WindowEvent) -> bool{false}
 
     fn cursor_moved(&mut self, fstate: &mut FrameworkState, device_id: &winit::event::DeviceId, position: &winit::dpi::PhysicalPosition<f64>) {
-        let pos = [position.x as f32 / fstate.size.width as f32, position.y as f32 / fstate.size.height as f32];
+        // have to invert y axis.
+        let pos = [position.x as f32 / fstate.size.width as f32, 1.0 - position.y as f32 / fstate.size.height as f32];
         self.canvas.layers[0].borrow_mut().queue_stroke(brush::Stroke::new(
                 &fstate.device,
                 self.brushops.arc_to("default").unwrap(),

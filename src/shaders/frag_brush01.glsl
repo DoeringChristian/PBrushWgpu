@@ -29,7 +29,7 @@ float fallofn(float x){
 }
 
 float falloft(float t){
-    return fallofn(t);
+    //return fallofn(t);
     if(t > 0.0 && t < 1.0)
         return 1.0;
     return 0.0;
@@ -46,6 +46,6 @@ void main(){
 
     float brush_strength = fallofn(d * 50.0) * falloft(t / length(stroke.pos1 - stroke.pos0));
 
-    //o_color = texture(sampler2D(t_self, s_self), f_uv) * (1.0 - brush_strength) + vec4(1.0, 0.0, 0.0, 1.0) * brush_strength;
-    o_color = texture(sampler2D(t_self, s_self), f_uv) + vec4(1.0, 1.0, 0.0, 0.0) * brush_strength;
+    o_color = texture(sampler2D(t_self, s_self), f_uv) * (1.0 - brush_strength) + vec4(1.0, 0.0, 0.0, 1.0) * brush_strength;
+    //o_color = texture(sampler2D(t_self, s_self), f_uv) + vec4(1.0, 0.0, 0.0, 0.0) * brush_strength;
 }
