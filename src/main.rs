@@ -1,3 +1,4 @@
+use device::Device;
 use render_target::RenderTarget;
 #[allow(unused)]
 
@@ -10,7 +11,7 @@ use winit::{
     window::WindowBuilder,
 };
 
-use std::sync::Arc;
+use std::{sync::Arc, collections::HashMap};
 
 #[macro_use]
 extern crate more_asserts;
@@ -34,6 +35,7 @@ mod canvas;
 mod algebra;
 mod brush;
 mod surface;
+mod device;
 
 use framework::*;
 use binding::*;
@@ -48,6 +50,8 @@ struct WinState{
     canvas: canvas::Canvas,
 
     cursor_prev: [f32; 2],
+
+    devices: HashMap<DeviceId, Device>,
 }
 
 impl State for WinState{
@@ -103,6 +107,7 @@ impl State for WinState{
             brushops,
             canvas,
             cursor_prev: [0.0, 0.0],
+            devices: HashMap::new(),
         }
     }
 
@@ -133,6 +138,8 @@ impl State for WinState{
                 brush::StrokeDataUniform{
                     pos0: self.cursor_prev,
                     pos1: pos,
+                    p0: 1.0,
+                    p1: 1.0,
                 }
         ));
 
@@ -142,6 +149,18 @@ impl State for WinState{
 
     fn resize(&mut self, fstate: &mut FrameworkState, new_size: winit::dpi::PhysicalSize<u32>){
         self.canvas.resize(&fstate.device, &fstate.queue, [new_size.width, new_size.height]).unwrap();
+    }
+    fn device_event(&mut self, fstate: &mut FrameworkState, device_id: &winit::event::DeviceId, device_event: &DeviceEvent) {
+        let device = self.devices.entry(*device_id).or_insert(Device::default());
+
+        if let DeviceEvent::Motion{axis, value} = device_event{
+            if *axis == 0u32{
+                device.pos[0] = *value as f32;
+            }
+            if *axis == 1u32{
+                device.pos[1] = *value as f32;
+            }
+        }
     }
 }
 

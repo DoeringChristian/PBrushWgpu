@@ -21,6 +21,8 @@ layout(set = 0, binding = 0) uniform transforms{
 layout(set = 2, binding = 0) uniform Stroke{
     vec2 pos0;
     vec2 pos1;
+    float p0;
+    float p1;
 }stroke;
 
 void main(){

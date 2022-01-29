@@ -19,14 +19,20 @@ pub struct BrushOp{
     drawable: Arc<dyn mesh::Drawable>,
 }
 
-pub struct BrushOpData<'bg>{
+pub struct BrushBindGroups<'bg>{
     stroke_data: StrokeBindGroups<'bg>,
     stroke: &'bg buffer::UniformBindGroup<StrokeDataUniform>,
     transforms: &'bg buffer::UniformBindGroup<mesh::ModelTransforms>,
 }
 
 /// Add an iter for layouts and bindgroups
-impl<'bg> BrushOpData<'bg>{
+impl<'bg> BrushBindGroups<'bg>{
+    pub fn set_bind_groups(&self, render_pass_pipeline: &mut pipeline::RenderPassPipeline<'bg, '_>){
+        render_pass_pipeline.set_bind_group("transforms", self.transforms.get_bind_group(), &[]);
+        render_pass_pipeline.set_bind_group("background", self.stroke_data.background,      &[]);
+        render_pass_pipeline.set_bind_group("self",       self.stroke_data.tex_self,        &[]);
+        render_pass_pipeline.set_bind_group("stroke",     self.stroke.get_bind_group(),     &[]);
+    }
 }
 
 impl BrushOp{
@@ -86,14 +92,17 @@ impl BrushOp{
     }
 }
 
-impl<'pd> mesh::DataDrawable<'pd, BrushOpData<'pd>> for BrushOp{
-    fn draw_bind_groups(&'pd self, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: BrushOpData<'pd>){
+impl<'pd> mesh::DataDrawable<'pd, BrushBindGroups<'pd>> for BrushOp{
+    fn draw_data(&'pd self, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: BrushBindGroups<'pd>){
         let mut render_pass_pipeline = render_pass.set_pipeline(&self.render_pipeline);
 
+        data.set_bind_groups(&mut render_pass_pipeline);
+        /*
         render_pass_pipeline.set_bind_group("transforms", data.transforms.get_bind_group(), &[]);
         render_pass_pipeline.set_bind_group("background", data.stroke_data.background, &[]);
         render_pass_pipeline.set_bind_group("self", data.stroke_data.tex_self, &[]);
         render_pass_pipeline.set_bind_group("stroke", data.stroke.get_bind_group(), &[]);
+        */
         
         self.drawable.draw(&mut render_pass_pipeline);
     }
@@ -104,6 +113,8 @@ impl<'pd> mesh::DataDrawable<'pd, BrushOpData<'pd>> for BrushOp{
 pub struct StrokeDataUniform{
     pub pos0: [f32; 2],
     pub pos1: [f32; 2],
+    pub p0: f32,
+    pub p1: f32,
 }
 
 pub struct StrokeBindGroups<'bg>{
@@ -136,8 +147,8 @@ impl Stroke{
 }
 
 impl<'pd> mesh::DataDrawable<'pd, StrokeBindGroups<'pd>> for Stroke{
-    fn draw_bind_groups(&'pd self, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: StrokeBindGroups<'pd>) {
-        self.brushop.draw_bind_groups(render_pass, BrushOpData{
+    fn draw_data(&'pd self, render_pass: &'_ mut pipeline::RenderPass<'pd>, data: StrokeBindGroups<'pd>) {
+        self.brushop.draw_data(render_pass, BrushBindGroups{
             stroke_data: data,
             stroke: &self.data_uniform,
             transforms: &self.transforms_uniform,

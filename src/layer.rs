@@ -90,15 +90,12 @@ impl Layer{
 
         let fragment_state = pipeline::FragmentStateBuilder::new(&fragment_shader)
             .set_entry_point("main")
+            .push_target_replace(*format)
             .build();
 
-        let render_pipeline = program::new(
-            &device,
-            *format,
-            &render_pipeline_layout,
-            &vertex_state,
-            &fragment_state,
-        )?;
+        let render_pipeline = pipeline::RenderPipelineBuilder::new(vertex_state, fragment_state)
+            .set_layout(&render_pipeline_layout)
+            .build(device);
 
         let translation = glm::vec3(0.0, 0.0, 0.0);
         let scale = glm::vec3(1.0, 1.0, 1.0);
@@ -271,7 +268,7 @@ impl Layer{
 
                 stroke.update_transforms(queue, &model_transforms);
 
-                stroke.draw_bind_groups(&mut render_pass, StrokeBindGroups{
+                stroke.draw_data(&mut render_pass, StrokeBindGroups{
                     background: prev,
                     tex_self: &self.tex_src.bind_group,
                 });

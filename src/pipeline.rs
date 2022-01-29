@@ -10,8 +10,13 @@ use crate::binding;
 use std::borrow::Cow;
 use anyhow::*;
 use core::ops::Range;
+use core::num::NonZeroU32;
 use naga;
 
+const DEFAULT_TEXTURE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8Unorm;
+
+pub trait RenderPipelineBindGroups<'rpbg>{
+}
 
 pub trait RenderData{
     fn pipeline_layout() -> PipelineLayout;
@@ -25,7 +30,7 @@ pub struct FragmentState<'fs>{
 }
 
 pub struct FragmentStateBuilder<'fsb>{
-    pub color_target_states: Vec<wgpu::ColorTargetState>,
+    pub targets: Vec<wgpu::ColorTargetState>,
     shader: &'fsb wgpu::ShaderModule,
     entry_point: &'fsb str,
 }
@@ -39,7 +44,7 @@ impl <'fsb> FragmentStateBuilder<'fsb>{
 
     pub fn new(shader: &'fsb wgpu::ShaderModule) -> Self{
         Self{
-            color_target_states: Vec::new(),
+            targets: Vec::new(),
             shader,
             entry_point: "fs_main",
         }
@@ -50,14 +55,26 @@ impl <'fsb> FragmentStateBuilder<'fsb>{
         self
     }
     
-    pub fn push_color_target_state(mut self, color_target_state: wgpu::ColorTargetState) -> Self{
-        self.color_target_states.push(color_target_state);
+    pub fn push_target(mut self, color_target_state: wgpu::ColorTargetState) -> Self{
+        self.targets.push(color_target_state);
+        self
+    }
+
+    pub fn push_target_replace(mut self, format: wgpu::TextureFormat) -> Self{
+        self.targets.push(wgpu::ColorTargetState{
+            format,
+            blend: Some(wgpu::BlendState{
+                color: wgpu::BlendComponent::REPLACE,
+                alpha: wgpu::BlendComponent::REPLACE,
+            }),
+            write_mask: wgpu::ColorWrites::all(),
+        });
         self
     }
 
     pub fn build(&self) -> FragmentState<'fsb>{
         FragmentState{
-            color_target_states: self.color_target_states.clone(),
+            color_target_states: self.targets.clone(),
             entry_point: self.entry_point,
             shader: self.shader,
         }
@@ -353,25 +370,98 @@ pub fn shader_with_shaderc(device: &wgpu::Device, src: &str, kind: shaderc::Shad
 pub struct RenderPipelineBuilder<'rpb>{
     label: Option<&'rpb str>,
     layout: Option<&'rpb PipelineLayout>,
-    vertex_module: Option<&'rpb wgpu::ShaderModule>,
-    vertex_entry_point: &'rpb str,
-    vertex_buffers: Vec<&'rpb wgpu::VertexBufferLayout<'rpb>>,
-    fragment_module: Option<&'rpb wgpu::ShaderModule>,
-    fragment_entry_point: &'rpb str,
-    fragment_targets: Vec<&'rpb wgpu::ColorTargetState>,
+    vertex: VertexState<'rpb>,
+    fragment: FragmentState<'rpb>,
+    primitive: wgpu::PrimitiveState,
+    depth_stencil: Option<wgpu::DepthStencilState>,
+    multisample: wgpu::MultisampleState,
+    multiview: Option<NonZeroU32>,
 }
 
 impl<'rpb> RenderPipelineBuilder<'rpb>{
-    pub fn new() -> Self{
+
+    const DEFAULT_ENTRY_POINT: &'static str = "main";
+
+    pub fn new(vertex: VertexState<'rpb>, fragment: FragmentState<'rpb>) -> Self{
+        let label = None;
+        let layout = None;
+        let primitive = wgpu::PrimitiveState{
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        };
+        let depth_stencil = None;
+        let multisample = wgpu::MultisampleState{
+            count: 1,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        };
+        let multiview = None;
         Self{
-            label: None,
-            layout: None,
-            vertex_module: None,
-            vertex_entry_point: "main",
-            vertex_buffers: Vec::new(),
-            fragment_module: None,
-            fragment_entry_point: "main",
-            fragment_targets: Vec::new(),
+            label,
+            layout,
+            vertex,
+            fragment,
+            primitive,
+            depth_stencil,
+            multisample,
+            multiview,
+        }
+    }
+
+    pub fn set_layout(mut self, layout: &'rpb PipelineLayout) -> Self{
+        self.layout = Some(layout);
+        self
+    }
+
+    pub fn build(self, device: &wgpu::Device) -> RenderPipeline{
+
+        /*
+        let layout = match self.layout{
+            Some(l) => Some(&l.layout),
+            _ => None,
+        };
+        */
+        let layout = self.layout.expect("no layout provided");
+        /*
+        let fragment = match self.fragment{
+            Some(f) => Some(wgpu::FragmentState{
+                module: f.shader,
+                entry_point: f.entry_point,
+                targets: &self.fragment.unwrap().color_target_states,
+            }),
+            _ => None,
+        };
+        */
+        let fragment = wgpu::FragmentState{
+            module: self.fragment.shader,
+            entry_point: self.fragment.entry_point,
+            targets: &self.fragment.color_target_states,
+        };
+
+        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
+            label: self.label,
+            layout: Some(&layout.layout),
+            vertex: wgpu::VertexState{
+                module: self.vertex.vertex_shader,
+                entry_point: self.vertex.entry_point,
+                buffers: &self.vertex.vertex_buffer_layouts,
+            },
+            fragment: Some(fragment),
+            primitive: self.primitive,
+            depth_stencil: self.depth_stencil,
+            multisample: self.multisample,
+            multiview: self.multiview,
+        });
+
+        RenderPipeline{
+            pipeline: render_pipeline,
+            bind_group_names: layout.names.clone(),
+            vertex_buffer_names: self.vertex.vertex_buffer_names.clone(),
         }
     }
 }

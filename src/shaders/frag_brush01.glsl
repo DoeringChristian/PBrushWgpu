@@ -1,5 +1,7 @@
 #version 460
 
+#define M_PI 3.1415926535897932384626433832795
+
 layout(location = 0) out vec4 o_color;
 
 layout(location = 0) in vec2 f_pos;
@@ -18,6 +20,8 @@ layout(set = 1, binding = 1) uniform sampler s_self;
 layout(set = 2, binding = 0) uniform Stroke{
     vec2 pos0;
     vec2 pos1;
+    float p0;
+    float p1;
 }stroke;
 
 
@@ -29,10 +33,13 @@ float fallofn(float x){
 }
 
 float falloft(float t){
-    //return fallofn(t);
+
+    return fallofn((t - 0.5) / 3.0);
+    /*
     if(t > 0.0 && t < 1.0)
         return 1.0;
     return 0.0;
+    */
 }
 
 void main(){
